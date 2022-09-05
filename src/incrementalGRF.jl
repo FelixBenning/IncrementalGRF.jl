@@ -1,4 +1,4 @@
-module incrementalGRF
+module IncrementalGRF
 
 export PackedLowerTriangular, GaussianRandomField, DifferentiableGRF, Kernels
 

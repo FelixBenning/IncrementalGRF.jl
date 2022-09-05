@@ -2,7 +2,7 @@ using Test
 using Plots: plot
 using LinearAlgebra: triu!, tril!
 
-using incrementalGRF 
+using IncrementalGRF 
 
 @testset "Testing \\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
 	A = PackedLowerTriangular([1., 2, 3])

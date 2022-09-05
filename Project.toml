@@ -1,4 +1,4 @@
-name = "incrementalGRF"
+name = "IncrementalGRF"
 uuid = "3642aa9e-ec3c-4cc7-84b8-4118a08652e8"
 authors = ["Felix Benning <felix.benning@gmail.com>"]
 version = "0.1.0"
