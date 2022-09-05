@@ -1,6 +1,7 @@
 module incrementalGP
 
-greet() = print("Hello World!")
-greet()
+export PackedLowerTriangular
+
+include("packedLowerTriangular.jl")
 
 end # module
