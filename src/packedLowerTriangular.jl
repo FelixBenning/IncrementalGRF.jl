@@ -1,6 +1,19 @@
 using LinearAlgebra.BLAS: @blasfunc 
-using LinearAlgebra: BlasFloat, BlasInt, tril!
+using LinearAlgebra: LinearAlgebra, BlasFloat, BlasInt 
 
+const libblastrampoline = "libblastrampoline"
+
+"""
+	Packed LowerTriangular Matrix in Row Major format
+
+	E.g.
+	A = [
+		1 
+		2 3
+		4 5 6
+	]
+	is saved as A.data=[1,2,3,4,5,6]
+"""
 struct PackedLowerTriangular{T} <: AbstractArray{T,2}
     data::Vector{T}
 end
@@ -33,6 +46,8 @@ end
 
 """
 finds and returns x such that A * x = b
+
+Manually implemented Fallback
 """
 function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
     n = length(v)
@@ -47,25 +62,23 @@ function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
 end
 
 """
+finds and returns x such that A * x = b
+
 BLAS acceleration for Float32 and Float64
 """
-@inline function \(A::PackedLowerTriangular{T}, v::AbstractArray{T}) where {T<: Union{Float32, Float64}}
+@inline function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where {T<: Union{Float32, Float64}}
 	@boundscheck size(A,1) == size(v,1) || throw("Dimensions of A and v do not match")
 	x = deepcopy(v)
 	# we are storing PackedLowerTriangular row major,
-	# so we need to tell LAPACK it is "U"pper triangular, and solve the "T"ransposed
+	# so we need to tell LAPACK it is 'U'pper triangular, and solve the 'T'ransposed
 	# equation. Lastly entries on our diagonal might be different from 1, so
-	# we do "N"ot have a unit diagonal
-	@inbounds tpsv!("U", "T", "N", A.data, x)
+	# we do 'N'ot have a unit diagonal
+	@inbounds tpsv!('U', 'T', 'N', A.data, x)
 	return x
 end
 
 
 for (tpsv, elty) in ((:stpsv_, :Float32), (:dtpsv_, :Float64))
-    # This function solves the system of equations
-	# A * x = b inplace.
-    # For documentation of function arguments, see 
-    # This function does not yield information on success or failure
     @eval begin
 		"""
 			Solve
