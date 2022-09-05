@@ -2,7 +2,13 @@
 
 julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "ac1187e548c6ab173ac57d4e72da1620216bce54"
+project_hash = "4fb2aabe29b51662d5dbcbfd12ff9df7f17a28bd"
+
+[[deps.Adapt]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "195c5505521008abea5aee4f96930717958eac6f"
+uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+version = "3.4.0"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -11,6 +17,12 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "0.5.2+0"
+
+[[deps.ElasticArrays]]
+deps = ["Adapt"]
+git-tree-sha1 = "d1933fd3e53e01e2d0ae98b8f7f65784e2d5430b"
+uuid = "fdbdab4c-e67f-52f5-8c3f-e7b388dad3d4"
+version = "1.2.10"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -23,6 +35,17 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 version = "0.3.20+0"
+
+[[deps.Random]]
+deps = ["SHA", "Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[deps.SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+version = "0.7.0"
+
+[[deps.Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]

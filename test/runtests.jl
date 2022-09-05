@@ -1,7 +1,8 @@
 using Test
+using Plots: plot
 using LinearAlgebra: triu!, tril!
 
-using incrementalGP 
+using incrementalGRF 
 
 @testset "Testing \\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
 	A = PackedLowerTriangular([1., 2, 3])
@@ -24,4 +25,11 @@ using incrementalGP
 			@test M\b ≈ x # same as non-packed
 		end
 	end
+end
+
+@testset "Testing GaussianRandomField" begin
+	grf = GaussianRandomField{Float64}(Kernels.squaredExponential)
+	x = -10:0.1:10
+	y = vcat(grf.(x)...)
+	plot(x,y)
 end
