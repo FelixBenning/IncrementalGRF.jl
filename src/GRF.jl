@@ -16,7 +16,7 @@ function GaussianRandomField{T, N}(
 	cov::CovarianceKernel{T,N};
 	jitter=10*eps(T)
 ) where {T<:Number,N} 
-	outdim = cov(zeros(T, N), zeros(T, N))
+	outdim = size(cov(zeros(T, N), zeros(T, N)), 1)
 	GaussianRandomField{T, N, outdim}(
 		rng, cov, jitter,
 		#=randomness=# ElasticMatrix{T}(undef, T, (outdim, 0)), 
