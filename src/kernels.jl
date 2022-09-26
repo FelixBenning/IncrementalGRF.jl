@@ -23,6 +23,13 @@ end
 	return sqNormEval(k, LinearAlgebra.dot(d,d))
 end
 
+struct TaylorCovariance{Order, T, N,} <: CovarianceKernel
+	k::CovarianceKernel{T,N}
+end
+
+function (cov::TaylorCovariance{1,T,N})(x::AbstractVector{T}, y::AbstractVector{T}) where {T,N}
+	return taylor1Covariance(cov.k, x, y)
+end
 
 @inline function taylor1Covariance(k::StationaryKernel{T,N}, x::AbstractVector{T}, y::AbstractVector{T}) where {T,N}
 	@boundscheck length(x) == N || throw(ArgumentError(

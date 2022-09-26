@@ -2,24 +2,33 @@ using LinearAlgebra: LinearAlgebra, issuccess
 using ElasticArrays: ElasticMatrix
 using Random: AbstractRNG, default_rng
 
-mutable struct GaussianRandomField{T<:Number}
+struct GaussianRandomField{T<:Number, N, Outdim}
 	rng::AbstractRNG
-	cov::Function
+	cov::CovarianceKernel{T, N}
 	jitter::T
-	outdim::Int
 	randomness::ElasticMatrix{T}
 	evaluated_points::ElasticMatrix{T}
 	chol_cov::PackedLowerTriangular{T}
-
-
-	GaussianRandomField{T}(rng::AbstractRNG, cov::Function; jitter=10*eps(T)) where T<:Number = new(
-		rng, cov, jitter
-	)
 end
 
-GaussianRandomField{T}(cov::Function; jitter=10*eps(T)) where T = GaussianRandomField{T}(default_rng(), cov, jitter=jitter)
+function GaussianRandomField{T, N}(
+	rng::AbstractRNG,
+	cov::CovarianceKernel{T,N};
+	jitter=10*eps(T)
+) where {T<:Number,N} 
+	outdim = cov(zeros(T, N), zeros(T, N))
+	GaussianRandomField{T, N, outdim}(
+		rng, cov, jitter,
+		#=randomness=# ElasticMatrix{T}(undef, T, (outdim, 0)), 
+		#=evaluated_points=# ElasticMatrix{T}(undef, T, (outdim, 0)),
+		#=chol_cov=# PackedLowerTriangular{T}([])
+	)
+end
+function GaussianRandomField{T, N}(cov::Function{T,N}; jitter=10*eps(T)) where {T,N}
+	GaussianRandomField{T,N}(default_rng(), cov, jitter=jitter)
+end
 
-function covariance(grf::GaussianRandomField{T}, x) where T
+function covariance(grf::GaussianRandomField{T, N}, x) where {T,N}
 	mixed_cov = Matrix{T}(
 		undef, size(grf.evaluated_points,2)*grf.outdim, grf.outdim
 	)
@@ -35,7 +44,7 @@ end
 """
 evaluate random field at point x
 """
-function (grf::GaussianRandomField{T})(x::AbstractVector{T}) where {T<:Number}
+function (grf::GaussianRandomField{T, N})(x::AbstractVector{T}) where {T<:Number, N}
 	try
 		coeff::Matrix{T} = grf.chol_cov \ covariance(grf, x)
 
@@ -79,7 +88,6 @@ function (grf::GaussianRandomField{T})(x::AbstractVector{T}) where {T<:Number}
 
 end
 
-function (grf::GaussianRandomField{T})(x::T) where T
-	# ease of use for one dimensional random fields
+function (grf::GaussianRandomField{T, 1})(x::T) where T
 	return grf([x])
 end
