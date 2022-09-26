@@ -33,7 +33,7 @@ end
 end
 
 """
-	Auto-diff Fallback of the taylor1Covariance for Stationary Kernels
+	Auto-diff Fallback of the taylor1Covariance for StationaryKernel
 """
 @inline function taylor1Covariance(k::StationaryKernel{T,N}, d::AbstractVector{T}) where {T,N}
 	@boundscheck length(d) == N || throw(ArgumentError(
@@ -46,6 +46,30 @@ end
 	result[2:end, 1] = - grad
 	result[1, 2:end] = grad
 	result[2:end, 2:end] = @inbounds -Zygote.hessian(k, d)
+	return result
+end
+
+
+"""
+	Auto-diff Fallback of the taylor1Covariance for IsotropicKernel
+"""
+@inline function taylor1Covariance(k::IsotropicKernel{T,N}, d::AbstractVector{T}) where {T,N}
+	@boundscheck length(d) == N || throw(ArgumentError(
+		"The input is of size $(length(d)), but should be of size $N"))
+
+	result = Matrix{T}(undef, N+1, N+1)
+	val, grad_1dim = Zygote.withgradient(x->sqNormEval(k, x), LinearAlgebra.dot(d,d))
+
+	result[1,1] = val 
+
+	grad_1dim = first(grad_1dim) # only one input
+	grad = 2*grad_1dim*d
+	result[2:end, 1] = - grad
+	result[1, 2:end] = grad
+
+	hess_1dim = Zygote.hessian(x->sqNormEval(k,x), LinearAlgebra.dot(d,d))
+	hess = 4*hess_1dim * d*d' + 2*grad_1dim* I
+	result[2:end, 2:end] = - hess 
 	return result
 end
 
