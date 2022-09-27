@@ -90,14 +90,28 @@ BLAS acceleration for Float32 and Float64
 @inline function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where {T<: Union{Float32, Float64}}
 	@boundscheck size(A,1) == size(v,1) || throw("Dimensions of A and v do not match")
 	x = deepcopy(v)
-	@inbounds solve!(A, v) 
+	@inbounds solve!(A, x) 
 	return x
 end
 
 
+"""
+    solve!(A, B)
 
+solves A * X = B, where A is a PackedLowerTriangular matrix, and B is a matrix and returns X
+
+!!!! OVERRIDES B with the solution X !!!!
+"""
+function solve!(A::PackedLowerTriangular{T}, B::Matrix{T}) where T
+    for col in eachcol(B)
+        solve!(A, col)
+    end
+    return B
+end
 
 """
+    \\(A, B)
+
 solves A * X = B, where A is a PackedLowerTriangular matrix, and B is a matrix and returns X
 """
 function \(A::PackedLowerTriangular{T}, B::Matrix{T}) where {T}
