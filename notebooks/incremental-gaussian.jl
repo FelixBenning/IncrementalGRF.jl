@@ -39,7 +39,7 @@ kernel = Kernels.SquaredExponential{Float64, 2}(0.5)
 kernel([0.5])
 
 # ╔═╡ 51be2a30-538d-4d10-bb69-53c0aac3d92f
-rf = GaussianRandomField{Float64}(Kernels.squaredExponential)
+rf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1.))
 
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
 x = -10:0.1:10

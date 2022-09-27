@@ -28,7 +28,7 @@ using IncrementalGRF
 end
 
 @testset "Testing GaussianRandomField" begin
-	grf = GaussianRandomField{Float64}(Kernels.squaredExponential)
+	grf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1))
 	x = -10:0.1:10
 	y = vcat(grf.(x)...)
 	plot(x,y)

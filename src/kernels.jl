@@ -2,7 +2,7 @@ module Kernels
 
 using LinearAlgebra: LinearAlgebra
 using Zygote: Zygote
-import ..StationaryKernel, ..IsotropicKernel
+import ..StationaryKernel, ..IsotropicKernel, ..CovarianceKernel
 
 @inline function (k::StationaryKernel{T,N})(
 	x::Union{AbstractVector{T}, Vector{Zygote.ForwardDiff.Dual{Nothing, T, N}}},
@@ -23,7 +23,7 @@ end
 	return sqNormEval(k, LinearAlgebra.dot(d,d))
 end
 
-struct TaylorCovariance{Order, T, N,} <: CovarianceKernel
+struct TaylorCovariance{Order, T, N} <: CovarianceKernel{T,N}
 	k::CovarianceKernel{T,N}
 end
 
