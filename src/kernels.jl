@@ -50,8 +50,8 @@ end
 	val, grad = @inbounds Zygote.withgradient(k, d)
 	grad = first(grad) # only one input
 	result[1,1] = val 
-	result[2:end, 1] = - grad
-	result[1, 2:end] = grad
+	result[2:end, 1] = grad
+	result[1, 2:end] = - grad
 	result[2:end, 2:end] = @inbounds -Zygote.hessian(k, d)
 	return result
 end
@@ -71,8 +71,8 @@ end
 
 	grad_1dim = first(grad_1dim) # only one input
 	grad = 2*grad_1dim*d
-	result[2:end, 1] = - grad
-	result[1, 2:end] = grad
+	result[2:end, 1] = grad
+	result[1, 2:end] = - grad
 
 	hess_1dim = Zygote.hessian(x->sqNormEval(k,x), LinearAlgebra.dot(d,d))
 	hess = 4*hess_1dim * d*d' + 2*grad_1dim* LinearAlgebra.I
