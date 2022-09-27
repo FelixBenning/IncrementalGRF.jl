@@ -47,7 +47,7 @@ end
 evaluate random field at point x
 """
 function (grf::GaussianRandomField{T, N})(x::AbstractVector{T}) where {T<:Number, N}
-	coeff::Matrix{T} = grf.chol_cov \ covariance(grf, x)
+	coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
 
 	cond_expectation = reshape(reshape(grf.randomness, 1, :) * coeff, :)
 	
@@ -70,6 +70,13 @@ function (grf::GaussianRandomField{T, N})(x::AbstractVector{T}) where {T<:Number
 	new_randomness =  randn(grf.rng, T, grf.outdim)
 	append!(grf.randomness, reshape(new_randomness, :, 1))
 	return cond_expectation + cond_var_cholesky.L * new_randomness
+end
+
+function conditionalExpectation(grf::GaussianRandomField{T,N})
+	return x::AbstractVector{T} -> begin
+		coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
+		return reshape(reshape(grf.randomness, 1, :) * coeff, :)
+	end
 end
 
 function (grf::GaussianRandomField{T, 1})(x::T) where T
