@@ -33,7 +33,7 @@ using IncrementalGRF
 md"# Test 1-dim Gaussian Random Field"
 
 # ╔═╡ 03dafac3-9914-495b-8632-f3a853e4bcac
-kernel = Kernels.SquaredExponential{Float64, 2}(0.5)
+kernel = Kernels.SquaredExponential{Float64, 1}(0.5)
 
 # ╔═╡ 2617f7d1-bd51-45c5-9bbf-6876b0211877
 kernel([0.5])

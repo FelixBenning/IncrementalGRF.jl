@@ -12,22 +12,22 @@ struct GaussianRandomField{T<:Number, N}
 	chol_cov::PackedLowerTriangular{T}
 end
 
-function GaussianRandomField{T, N}(
+function GaussianRandomField(
 	rng::AbstractRNG,
 	cov::CovarianceKernel{T,N};
 	jitter=10*eps(T)
 ) where {T<:Number,N}
 	outdim = size(cov(zeros(T, N), zeros(T, N)), 1)
-	return GaussianRandomField{T,N}(
+	GaussianRandomField{T,N}(
 		rng, cov, jitter, outdim,
-		#=randomness=# ElasticMatrix{T}(undef, T, (outdim, 0)), 
-		#=evaluated_points=# ElasticMatrix{T}(undef, T, (outdim, 0)),
-		#=chol_cov=# PackedLowerTriangular{T}([])
+		#=randomness=# ElasticMatrix{T}(Matrix{T}(undef, (outdim, 0))), 
+		#=evaluated_points=# ElasticMatrix{T}(Matrix{T}(undef, (outdim, 0))),
+		#=chol_cov=# PackedLowerTriangular{T}(T[])
 	)
 end
 
-function GaussianRandomField{T, N}(cov::CovarianceKernel{T,N}; jitter=10*eps(T)) where {T,N}
-	GaussianRandomField{T,N}(default_rng(), cov, jitter=jitter)
+function GaussianRandomField(cov::CovarianceKernel{T,N}; jitter=10*eps(T)) where {T,N}
+	GaussianRandomField(default_rng(), cov, jitter=jitter)
 end
 
 function covariance(grf::GaussianRandomField{T, N}, x) where {T,N}
