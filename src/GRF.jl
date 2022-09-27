@@ -72,7 +72,7 @@ function (grf::GaussianRandomField{T, N})(x::AbstractVector{T}) where {T<:Number
 	return cond_expectation + cond_var_cholesky.L * new_randomness
 end
 
-function conditionalExpectation(grf::GaussianRandomField{T,N})
+function conditionalExpectation(grf::GaussianRandomField{T,N}) where {T,N}
 	return x::AbstractVector{T} -> begin
 		coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
 		return reshape(reshape(grf.randomness, 1, :) * coeff, :)

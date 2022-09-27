@@ -16,3 +16,11 @@ function (dgrf::DifferentiableGRF{T, N})(x::AbstractVector{T}) where {T,N}
 	res = dgrf.grf(x)
 	return (val=res[1], gradient=res[2:end])
 end
+
+function conditionalExpectation(dgrf::DifferentiableGRF{T,N}) where {T,N}
+	cond = conditionalExpectation(dgrf.grf)
+	return x::AbstractVector{T} -> begin
+		res = cond(x)
+		return (val=res[1], gradient=res[2:end])
+	end
+end

@@ -45,11 +45,13 @@ end
 end
 
 """
-finds and returns x such that A * x = b
+    \\(A,v)
+
+finds and returns x such that A * x = v
 
 Manually implemented Fallback
 """
-function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
+@inline function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
     n = length(v)
     result = Vector{T}(undef, n)
     p = 0
@@ -59,25 +61,6 @@ function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
         p += idx + 1
     end
     return result
-end
-
-"""
-    solve!(A, v)
-
-finds and returns x such that A * x = v
-
-!!!! OVERRIDES v with the solution x !!!!
-
-BLAS acceleration for Float32 and Float64
-"""
-@inline function solve!(A::PackedLowerTriangular{T}, v::Vector{T}) where {T<: Union{Float32, Float64}}
-	@boundscheck size(A,1) == size(v,1) || throw("Dimensions of A and v do not match")
-	# we are storing PackedLowerTriangular row major,
-	# so we need to tell LAPACK it is 'U'pper triangular, and solve the 'T'ransposed
-	# equation. Lastly entries on our diagonal might be different from 1, so
-	# we do 'N'ot have a unit diagonal
-	@inbounds tpsv!('U', 'T', 'N', A.data, v)
-	return v
 end
 
 """
@@ -94,6 +77,46 @@ BLAS acceleration for Float32 and Float64
 	return x
 end
 
+"""
+    solve!(A, v)
+
+finds and returns x such that A * x = v
+
+!!!! Overrides v with x !!!!
+
+Manually implemented Fallback
+"""
+@inline function solve!(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
+    n = length(v)
+    p = 0
+    for idx in 0:(n-1)
+        v[idx+1] -= dot(result[1:idx], A.data[(p+1):p+idx])
+        v[idx+1] /= A.data[p+idx+1]
+        p += idx + 1
+    end
+    return v
+end
+
+"""
+    solve!(A, v)
+
+finds and returns x such that A * x = v
+
+!!!! OVERRIDES v with the solution x !!!!
+
+BLAS acceleration for Float32 and Float64
+"""
+@inline function solve!(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where {T<: Union{Float32, Float64}}
+	@boundscheck size(A,1) == size(v,1) || throw("Dimensions of A and v do not match")
+	# we are storing PackedLowerTriangular row major,
+	# so we need to tell LAPACK it is 'U'pper triangular, and solve the 'T'ransposed
+	# equation. Lastly entries on our diagonal might be different from 1, so
+	# we do 'N'ot have a unit diagonal
+	@inbounds tpsv!('U', 'T', 'N', A.data, v)
+	return v
+end
+
+
 
 """
     solve!(A, B)
@@ -102,7 +125,7 @@ solves A * X = B, where A is a PackedLowerTriangular matrix, and B is a matrix a
 
 !!!! OVERRIDES B with the solution X !!!!
 """
-function solve!(A::PackedLowerTriangular{T}, B::Matrix{T}) where T
+@inline function solve!(A::PackedLowerTriangular{T}, B::Matrix{T}) where T
     for col in eachcol(B)
         solve!(A, col)
     end
