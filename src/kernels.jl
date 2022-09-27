@@ -75,7 +75,7 @@ end
 	result[1, 2:end] = grad
 
 	hess_1dim = Zygote.hessian(x->sqNormEval(k,x), LinearAlgebra.dot(d,d))
-	hess = 4*hess_1dim * d*d' + 2*grad_1dim* I
+	hess = 4*hess_1dim * d*d' + 2*grad_1dim* LinearAlgebra.I
 	result[2:end, 2:end] = - hess 
 	return result
 end
@@ -86,7 +86,7 @@ end
 
 @inline function sqNormEval(
 	k::SquaredExponential{T,N},
-	d::Union{T, Zygote.ForwardDiff.Dual{Nothing, T, N}}
+	d::Union{T, Zygote.ForwardDiff.Dual}
 ) where {T,N}
 	return exp(-d/(2*k.lengthScale^2))
 end
