@@ -21,7 +21,7 @@ function GaussianRandomField(
 	GaussianRandomField{T,N}(
 		rng, cov, jitter, outdim,
 		#=randomness=# ElasticMatrix{T}(Matrix{T}(undef, (outdim, 0))), 
-		#=evaluated_points=# ElasticMatrix{T}(Matrix{T}(undef, (outdim, 0))),
+		#=evaluated_points=# ElasticMatrix{T}(Matrix{T}(undef, (N, 0))),
 		#=chol_cov=# PackedLowerTriangular{T}(T[])
 	)
 end
