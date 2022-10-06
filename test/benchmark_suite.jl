@@ -3,7 +3,7 @@ using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
 function oneDimGaussian(n)
 	grf = GaussianRandomField{Float64}(Kernels.squaredExponential)
-	grf.(range(-10, stop=10, length=n))
+	grf.(range(-50, stop=50, length=n))
 end
 
 function gradientDescent(dim, steps)
@@ -25,11 +25,11 @@ end
 
 function defineSuite()
 	suite = BenchmarkGroup()
-	for dim in [1, 10, 100]
+	for dim in [1, 10, 100, 300]
 		suite[["GradientDescent", "$(dim)-dim"]] = B.@benchmarkable gradientDescent($dim, 30)
 	end
 
-	for n in [10, 100]
+	for n in [10, 100, 500]
 		suite[["oneDimGaussian","$n points"]] = B.@benchmarkable oneDimGaussian($n)
 	end
 	return suite
