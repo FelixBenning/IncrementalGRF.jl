@@ -12,5 +12,4 @@ include("GRF.jl")
 include("differentiableGRF.jl")
 include("kernels.jl")
 
-
 end # module
