@@ -2,13 +2,13 @@ using LinearAlgebra: LinearAlgebra
 using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
 function oneDimGaussian(n)
-	grf = GaussianRandomField{Float64}(Kernels.squaredExponential)
+	grf = GaussianRandomField(Kernels.SquaredExponential{Float64,1}(1))
 	grf.(range(-50, stop=50, length=n))
 end
 
 function gradientDescent(dim, steps)
-	high_dim_rf = DifferentiableGRF{Float64}(
-		Kernels.sqExpKernelWithGrad, jitter=0.00001)
+	high_dim_rf = DifferentiableGRF(
+		Kernels.SquaredExponential{Float64, dim}(1), jitter=0.00001)
 
 	local position = zeros(dim)
 	vals = Vector{Float64}(undef, steps)
@@ -51,7 +51,7 @@ end
 function runTunedSuite(param_json::AbstractString="", result_path::AbstractString=""; verbose::Bool=true, seconds::Int=100)
 	suite = tuneSuite(defineSuite(), param_json)
 	result = B.run(suite, verbose=verbose, seconds=seconds)
-	if isfile(result_path)
+	if isfile(result_path) || (splitext(result_path)[2] == ".json")
 		B.save(result_path, result)
 	end
 	return result
