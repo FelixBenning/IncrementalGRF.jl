@@ -4,7 +4,7 @@
 
 using IncrementalGRF
 
-rf = GaussianRandomField{Float64}(Kernels.squaredExponential)
+rf = GaussianRandomField(Kernels.SquaredExponential{Float64, 2}(1))
 rf([0., 0.])
 rf.([
   [1., 0.]
@@ -12,9 +12,9 @@ rf.([
 ])
 
 # Gradient Descent on Random Field
-diff_rf = DifferentiableGRF{Float64}(Kernels.sqExpKernelWithGrad)
-
 dim=10
+diff_rf = DifferentiableGRF(Kernels.SquaredExponential{Float64, dim}(1))
+
 steps=20
 position = zeros(dim) # start at [0,...0]
 
