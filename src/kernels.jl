@@ -88,18 +88,18 @@ end
 end
 
 
-function gaussKernel(x)
-    exp(-x^2 / 2)
-end
-
 @inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:SquaredExponential{T,N}}
     dim = length(d)
     result = Matrix{T}(undef, dim + 1, dim + 1)
-    result[1, 1] = 1
-    result[2:end, 1] = -d
-    result[1, 2:end] = d
-    result[2:end, 2:end] = (LinearAlgebra.I - d * transpose(d))
-    return result * gaussKernel(LinearAlgebra.norm(d))
+	factor = sqNormEval(cov.k, d)
+    result[1, 1] = factor
+	dl = d/(cov.k.lengthScale^2) * factor
+    result[2:end, 1] = - dl
+    result[1, 2:end] = dl
+    result[2:end, 2:end] = factor * (
+		LinearAlgebra.I/cov.k.lengthScale^2 - dl * transpose(dl)
+	)
+    return result 
 end
 
 end # module
