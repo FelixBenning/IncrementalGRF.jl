@@ -29,26 +29,16 @@ include("benchmark_suite.jl")
 	end
 end
 
-# @testset "Testing 1-dim GaussianRandomField" begin
-# 	function oneDimGaussian()
-# 		grf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1))
-# 		grf.(-10:0.2:10)
-# 	end
-
-# 	grf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1))
-# 	x = -10:0.1:10
-# 	y = vcat(grf.(x)...)
-# 	plot(x,y)
-# end
-
-
 @testset "Performance Benchmarks" begin
+	old_results = nothing
 	try
-		old_results = B.load("local_benchmark.json")
+		old_results = B.load("local_benchmark.json")[1]
+	catch e
+		@test error("No benchmark yet.") skip=true
+	end
+	if !isnothing(old_results)
 		results = runTunedSuite("params.json", "new_local_benchmark.json", verbose=true, seconds=100)
 		judgements = B.judge(B.minimum(results), B.minimum(old_results))
 		@test isempty(B.regressions(judgements))
-	catch e
-		@test error("No benchmark yet.") skip=true
 	end
 end

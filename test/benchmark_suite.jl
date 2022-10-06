@@ -1,5 +1,10 @@
 using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
+function oneDimGaussian(n)
+	grf = GaussianRandomField{Float64}(Kernels.squaredExponential)
+	grf.(range(-10, stop=10, length=n))
+end
+
 function gradientDescent(dim, steps)
 	high_dim_rf = DifferentiableGRF{Float64}(
 		Kernels.sqExpKernelWithGrad, jitter=0.00001)
@@ -19,9 +24,12 @@ end
 
 function defineSuite()
 	suite = BenchmarkGroup()
-	suite["GradientDescent"] = BenchmarkGroup()
 	for dim in [1, 10]
-		suite["GradientDescent"]["$(dim)-dim"] = B.@benchmarkable gradientDescent($dim, 30)
+		suite[["GradientDescent", "$(dim)-dim"]] = B.@benchmarkable gradientDescent($dim, 30)
+	end
+
+	for n in [10, 100]
+		suite[["oneDimGaussian","$n points"]] = B.@benchmarkable oneDimGaussian($n)
 	end
 	return suite
 end

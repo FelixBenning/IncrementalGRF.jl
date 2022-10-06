@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.12
 
 using Markdown
 using InteractiveUtils
@@ -54,7 +54,7 @@ pairs(x) = ( (a,b) for (k,a) in enumerate(x) for b in Iterators.drop(x, k) )
 begin
 	drf = DifferentiableGRF{Float64}(Kernels.sqExpKernelWithGrad, jitter=0.00001)
 
-	discr = -5:0.5:5
+	discr = -5:0.3:5
 	grid = [drf([x,y]) for x in discr for y in discr]
 
 	
