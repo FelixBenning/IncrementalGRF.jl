@@ -13,7 +13,7 @@ function DifferentiableGRF{Order}(cov::CovarianceKernel{T,N}; jitter=10 * eps(T)
 end
 
 function DifferentiableGRF(cov::CovarianceKernel{T,N}; jitter=10 * eps(T)) where {T<:Number,N}
-    return DifferentiableGRF{1}(cov, jitter)
+    return DifferentiableGRF{1}(cov, jitter=jitter)
 end
 
 function (dgrf::DifferentiableGRF{1,T,N})(x::AbstractVector{T}) where {T,N}
