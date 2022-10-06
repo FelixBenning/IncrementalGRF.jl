@@ -1,8 +1,10 @@
 using Test
 using Plots: plot
-using LinearAlgebra: triu!, tril!
+using LinearAlgebra: LinearAlgebra, triu!, tril!
 
 using IncrementalGRF 
+
+include("benchmark_suite.jl")
 
 @testset "Testing \\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
 	A = PackedLowerTriangular([1., 2, 3])
@@ -27,9 +29,26 @@ using IncrementalGRF
 	end
 end
 
-@testset "Testing GaussianRandomField" begin
-	grf = GaussianRandomField{Float64}(Kernels.squaredExponential)
-	x = -10:0.1:10
-	y = vcat(grf.(x)...)
-	plot(x,y)
+# @testset "Testing 1-dim GaussianRandomField" begin
+# 	function oneDimGaussian()
+# 		grf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1))
+# 		grf.(-10:0.2:10)
+# 	end
+
+# 	grf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1))
+# 	x = -10:0.1:10
+# 	y = vcat(grf.(x)...)
+# 	plot(x,y)
+# end
+
+
+@testset "Performance Benchmarks" begin
+	try
+		old_results = B.load("local_benchmark.json")
+		results = runTunedSuite("params.json", "new_local_benchmark.json", verbose=true, seconds=100)
+		judgements = B.judge(B.minimum(results), B.minimum(old_results))
+		@test isempty(B.regressions(judgements))
+	catch e
+		@test error("No benchmark yet.") skip=true
+	end
 end
