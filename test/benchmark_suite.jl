@@ -2,13 +2,13 @@ using LinearAlgebra: LinearAlgebra
 using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
 function oneDimGaussian(n)
-	grf = GaussianRandomField(Kernels.SquaredExponential{Float64,1}(1))
+	grf = GaussianRandomField(Kernels.SquaredExponential{Float64,1}(1.))
 	grf.(range(-50, stop=50, length=n))
 end
 
 function gradientDescent(dim, steps)
 	high_dim_rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64, dim}(1), jitter=0.00001)
+		Kernels.SquaredExponential{Float64, dim}(1.), jitter=0.00001)
 
 	local position = zeros(dim)
 	vals = Vector{Float64}(undef, steps)

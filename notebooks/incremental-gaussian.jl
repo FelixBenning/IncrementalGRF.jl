@@ -29,6 +29,30 @@ end
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
 using IncrementalGRF
 
+# ╔═╡ a7623375-f44b-4c11-b5d4-cff373b62919
+begin
+	struct Hello{T} 
+		name::T
+	end
+	function (i::Hello{T})(k::Int) where T
+		for it in 1:k
+			print("Hello $(i.name)\n")
+		end
+	end
+	function (i::Hello{Int})(k::Int)
+		print("wtf")
+	end
+end
+
+# ╔═╡ 2bd76d9b-5a92-4df7-9ca0-7faa7ad1fa9f
+h=Hello(1)
+
+# ╔═╡ 139ab384-5a79-46bf-a8cb-6770988d4ecd
+h(2)
+
+# ╔═╡ 7b9a98a6-d7cb-4dbe-ba5d-154c753b3698
+invoke(h, Tuple{Int}, 1)
+
 # ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
 k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
 
@@ -158,6 +182,10 @@ md"# Appendix"
 # ╔═╡ Cell order:
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
+# ╠═a7623375-f44b-4c11-b5d4-cff373b62919
+# ╠═2bd76d9b-5a92-4df7-9ca0-7faa7ad1fa9f
+# ╠═139ab384-5a79-46bf-a8cb-6770988d4ecd
+# ╠═7b9a98a6-d7cb-4dbe-ba5d-154c753b3698
 # ╠═b7b14883-2aae-40ab-bde1-6c0a186a9da8
 # ╠═32b7614a-f3aa-4cd3-82ba-0a5f6015be57
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3

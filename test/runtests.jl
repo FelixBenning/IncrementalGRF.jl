@@ -6,7 +6,7 @@ using IncrementalGRF
 
 include("benchmark_suite.jl")
 
-@testset "Testing \\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
+@testset "\\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
 	A = PackedLowerTriangular([1., 2, 3])
 	b = [1., 2.]
 	@test A\b ≈ [1.,0]
@@ -29,7 +29,25 @@ include("benchmark_suite.jl")
 	end
 end
 
-@testset "Performance Benchmarks" begin
+@testset "Kernels" begin
+	@testset "SquaredExponential" begin
+		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(-1.)
+		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(0.)
+
+		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [10,20,100]
+			l = randn(type)^2
+			k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(l))
+			d = randn(type, dim)
+			@test k(d, zeros(type, dim)) ≈ k(d)
+			# @test k(d) ≈ invoke(
+			# 	(::TaylorCovariance{1,type,dim,IsotropicKernel{type, dim}}),
+			# 	d
+			# )
+		end
+	end
+end
+
+function performanceBenchmarks()
 	old_results = nothing
 	try
 		old_results = B.load("local_benchmark.json")[1]
@@ -41,4 +59,8 @@ end
 		judgements = B.judge(B.minimum(results), B.minimum(old_results))
 		@test isempty(B.regressions(judgements))
 	end
+end
+
+@testset "Performance Benchmarks" begin
+	performanceBenchmarks()
 end
