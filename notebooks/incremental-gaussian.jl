@@ -32,19 +32,6 @@ using IncrementalGRF
 # ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
 k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
 
-# ╔═╡ 9618cca3-4d80-48c4-b3a1-15ef1235dec0
-begin
-	struct Test{O, T, V<:AbstractVector{T}}
-		v::V
-	end
-	function Test{Ord}(v::V) where {Ord, T, V<:AbstractVector{T}}
-		return Test{Ord, T, V}(v)
-	end
-end
-
-# ╔═╡ f6664955-89b3-492d-8296-39cf70d0184c
-Test{1}([1,2])
-
 # ╔═╡ 32b7614a-f3aa-4cd3-82ba-0a5f6015be57
 k([0.,0, 0],[2.,0, 0])
 
@@ -172,8 +159,6 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╠═b7b14883-2aae-40ab-bde1-6c0a186a9da8
-# ╠═9618cca3-4d80-48c4-b3a1-15ef1235dec0
-# ╠═f6664955-89b3-492d-8296-39cf70d0184c
 # ╠═32b7614a-f3aa-4cd3-82ba-0a5f6015be57
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
 # ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
