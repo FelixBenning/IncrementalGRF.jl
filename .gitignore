@@ -20,3 +20,5 @@ docs/site/
 
 # Apple trash
 .DS_Store
+
+test/*local_benchmark.json
