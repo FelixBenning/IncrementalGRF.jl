@@ -1,3 +1,4 @@
+using LinearAlgebra: LinearAlgebra
 using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
 function oneDimGaussian(n)
@@ -24,7 +25,7 @@ end
 
 function defineSuite()
 	suite = BenchmarkGroup()
-	for dim in [1, 10]
+	for dim in [1, 10, 100]
 		suite[["GradientDescent", "$(dim)-dim"]] = B.@benchmarkable gradientDescent($dim, 30)
 	end
 
