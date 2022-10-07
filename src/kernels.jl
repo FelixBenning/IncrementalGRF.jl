@@ -32,23 +32,26 @@ function TaylorCovariance{Order}(k::K) where {Order,T,N,K<:CovarianceKernel{T,N}
 end
 
 @inline function (cov::TaylorCovariance{1,T,N,K})(x::AbstractVector{T}, y::AbstractVector{T}) where {T,N,K<:StationaryKernel{T,N}}
-    return cov(x - y)
+    return taylor1(cov.k, x - y)
+end
+@inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:StationaryKernel{T,N}}
+    return taylor1(cov.k, d)
 end
 
 """
 	Auto-diff Fallback for the TaylorCovariance{1,T,N,StationaryKernel{T,N}}
 """
-@inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:StationaryKernel{T,N}}
+@inline function taylor1(kernel::StationaryKernel{T,N}, d::AbstractVector{T}) where {T,N}
     @boundscheck length(d) == N || throw(ArgumentError(
         "The input is of size $(length(d)), but should be of size $N"))
 
     result = Matrix{T}(undef, N + 1, N + 1)
-    val, grad = @inbounds Zygote.withgradient(cov.k, d)
+    val, grad = @inbounds Zygote.withgradient(kernel, d)
     grad = first(grad) # only one input
     result[1, 1] = val
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
-    result[2:end, 2:end] = @inbounds -Zygote.hessian(cov.k, d)
+    result[2:end, 2:end] = @inbounds -Zygote.hessian(kernel, d)
     return result
 end
 
@@ -56,12 +59,12 @@ end
 """
 	Auto-diff Fallback for TaylorCovariance{1,T,N,IsotropicKernel{T,N}}
 """
-@inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:IsotropicKernel{T,N}}
+@inline function taylor1(kernel::IsotropicKernel{T,N}, d::AbstractVector{T}) where {T,N}
     @boundscheck length(d) == N || throw(ArgumentError(
         "The input is of size $(length(d)), but should be of size $N"))
 
     result = Matrix{T}(undef, N + 1, N + 1)
-    val, grad_1dim = Zygote.withgradient(x -> sqNormEval(cov.k, x), LinearAlgebra.dot(d, d))
+    val, grad_1dim = Zygote.withgradient(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
 
     result[1, 1] = val
 
@@ -70,7 +73,7 @@ end
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
-    hess_1dim = Zygote.hessian(x -> sqNormEval(cov.k, x), LinearAlgebra.dot(d, d))
+    hess_1dim = Zygote.hessian(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
     hess = 4 * hess_1dim * d * d' + 2 * grad_1dim * LinearAlgebra.I
     result[2:end, 2:end] = -hess
     return result
@@ -93,17 +96,17 @@ end
 end
 
 
-@inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:SquaredExponential{T,N}}
+@inline function taylor1(kernel::SquaredExponential{T,N}, d::AbstractVector{T}) where {T,N}
     dim = length(d)
     result = Matrix{T}(undef, dim + 1, dim + 1)
-	factor = sqNormEval(cov.k, LinearAlgebra.dot(d, d))
+	factor = sqNormEval(kernel, LinearAlgebra.dot(d, d))
     result[1, 1] = factor 
-    dl = d / (cov.k.lengthScale^2)
+    dl = d / (kernel.lengthScale^2)
 	grad = factor * dl
     result[2:end, 1] = - grad
     result[1, 2:end] = grad 
     result[2:end, 2:end] = (
-		factor * LinearAlgebra.I / cov.k.lengthScale^2 - grad * transpose(dl)
+		factor * LinearAlgebra.I / kernel.lengthScale^2 - grad * transpose(dl)
 	)
     return result
 end

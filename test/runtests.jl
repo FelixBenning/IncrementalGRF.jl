@@ -36,31 +36,19 @@ end
 
 		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [10,20,100]
 			l = randn(type)^2
-			k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(l))
+			tk = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(l))
 			d = randn(type, dim)
-			@test k(d, zeros(type, dim)) ≈ k(d)
-			# @test k(d) ≈ invoke(
-			# 	(::TaylorCovariance{1,type,dim,IsotropicKernel{type, dim}}),
-			# 	d
-			# )
+			@test tk(d, zeros(type, dim)) ≈ tk(d)
+			@test tk(d) ≈ invoke(
+				Kernels.taylor1, 
+				Tuple{IsotropicKernel{type, dim}, AbstractVector{type}},
+				tk.k, d
+			)
+			@test tk(d) ≈ invoke(
+				Kernels.taylor1, 
+				Tuple{StationaryKernel{type, dim}, AbstractVector{type}},
+				tk.k, d
+			)
 		end
 	end
-end
-
-function performanceBenchmarks()
-	old_results = nothing
-	try
-		old_results = B.load("local_benchmark.json")[1]
-	catch e
-		@test error("No benchmark yet.") skip=true
-	end
-	if !isnothing(old_results)
-		results = runTunedSuite("params.json", "new_local_benchmark.json", verbose=true, seconds=100)
-		judgements = B.judge(B.minimum(results), B.minimum(old_results))
-		@test isempty(B.regressions(judgements))
-	end
-end
-
-@testset "Performance Benchmarks" begin
-	performanceBenchmarks()
 end
