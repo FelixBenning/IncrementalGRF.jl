@@ -41,16 +41,15 @@ function tuneSuite(suite, param_json::AbstractString="")
 	else 
 		B.tune!(suite)
 	end
-
-	if isfile(param_json) || (splitext(param_json)[2] == ".json")
-		B.save(param_json, B.params(suite))
-	end
 	return suite
 end
 
 function runTunedSuite(param_json::AbstractString="", result_path::AbstractString=""; verbose::Bool=true, seconds::Int=100)
 	suite = tuneSuite(defineSuite(), param_json)
 	result = B.run(suite, verbose=verbose, seconds=seconds)
+	if isfile(param_json) || (splitext(param_json)[2] == ".json")
+		B.save(param_json, B.params(suite))
+	end
 	if isfile(result_path) || (splitext(result_path)[2] == ".json")
 		B.save(result_path, result)
 	end

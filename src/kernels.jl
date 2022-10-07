@@ -78,11 +78,11 @@ end
 
 struct SquaredExponential{T<:Number,N} <: IsotropicKernel{T,N}
     lengthScale::T
-	SquaredExponential{T,N}(lengthScale) where {T<:Number,N} = begin 
-		lengthScale > 0 ? new(lengthScale) : throw(
-			ArgumentError("lengthScale is not positive")
-		)
-	end
+    SquaredExponential{T,N}(lengthScale) where {T<:Number,N} = begin
+        lengthScale > 0 ? new(lengthScale) : throw(
+            ArgumentError("lengthScale is not positive")
+        )
+    end
 end
 
 @inline function sqNormEval(
@@ -93,18 +93,19 @@ end
 end
 
 
-# @inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:SquaredExponential{T,N}}
-#     dim = length(d)
-#     result = Matrix{T}(undef, dim + 1, dim + 1)
-# 	factor = sqNormEval(cov.k, LinearAlgebra.dot(d,d))
-#     result[1, 1] = factor
-# 	dl = d/(cov.k.lengthScale^2) * factor
-#     result[2:end, 1] = - dl
-#     result[1, 2:end] = dl
-#     result[2:end, 2:end] = factor * (
-# 		LinearAlgebra.I/cov.k.lengthScale^2 - dl * transpose(dl)
-# 	)
-#     return result 
-# end
+@inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:SquaredExponential{T,N}}
+    dim = length(d)
+    result = Matrix{T}(undef, dim + 1, dim + 1)
+	factor = sqNormEval(cov.k, LinearAlgebra.dot(d, d))
+    result[1, 1] = factor 
+    dl = d / (cov.k.lengthScale^2)
+	grad = factor * dl
+    result[2:end, 1] = - grad
+    result[1, 2:end] = grad 
+    result[2:end, 2:end] = (
+		factor * LinearAlgebra.I / cov.k.lengthScale^2 - grad * transpose(dl)
+	)
+    return result
+end
 
 end # module
