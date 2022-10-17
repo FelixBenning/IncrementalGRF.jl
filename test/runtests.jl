@@ -34,20 +34,27 @@ end
 		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(-1.)
 		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(0.)
 
-		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [10,20,100]
+		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [1,3,50]
 			l = randn(type)^2
 			tk = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(l))
-			d = randn(type, dim)
-			@test tk(d, zeros(type, dim)) ≈ tk(d)
+			x = randn(type, dim)
+			y = randn(type, dim)
+			d = x-y
+			@test tk(x,y) ≈ tk(d)
 			@test tk(d) ≈ invoke(
-				Kernels.taylor1, 
+				Kernels._taylor1, 
 				Tuple{IsotropicKernel{type, dim}, AbstractVector{type}},
 				tk.k, d
 			)
 			@test tk(d) ≈ invoke(
-				Kernels.taylor1, 
+				Kernels._taylor1, 
 				Tuple{StationaryKernel{type, dim}, AbstractVector{type}},
 				tk.k, d
+			)
+			@test tk(d) ≈ invoke(
+				Kernels._taylor1, 
+				Tuple{CovarianceKernel{type, dim}, AbstractVector{type}, AbstractVector{type}},
+				tk.k, x, y
 			)
 		end
 	end
