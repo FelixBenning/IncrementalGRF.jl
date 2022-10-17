@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.12
+# v0.19.13
 
 using Markdown
 using InteractiveUtils
@@ -13,6 +13,7 @@ begin
 	Pkg.add("Plots")
 	Pkg.add("ProgressLogging")
 	Pkg.add("PlutoUI")
+	Pkg.add("LaTeXStrings")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -24,6 +25,7 @@ begin
 	using ProgressLogging: @progress
 	using Logging: Logging, SimpleLogger, with_logger
 	using PlutoUI: Slider
+	using LaTeXStrings
 end
 
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
@@ -140,12 +142,20 @@ begin
 	vals, grads, _ = gradientDescent(dim, steps)
 	local grid = reshape(
 		[
-			dot(g1, g2)/(LinearAlgebra.norm(g1)*LinearAlgebra.norm(g2))
+			dot(g1, g2)/(LinearAlgebra.norm(g1)^2)
 			for g1 in eachcol(grads) for g2 in eachcol(grads)
 		], 
 		size(grads, 2), :
 	)
-	plot!(orthPlot, grid, seriestype=:heatmap)
+	plot!(
+		orthPlot, grid, seriestype=:heatmap,
+		title=latexstring(
+			"Projection \$ π_{g_1}(g_2)=\\langle g_1,g_2\\rangle/\\|g_1\\|^2\$"
+		),
+		ylabel=latexstring("gradient \$g_2\$"), 
+		xlabel=latexstring("projection target gradient (\$g_1\$)"),
+		fontfamily="Computer Modern"
+	)
 	plot(vals, label=nothing)
 end
 
@@ -178,4 +188,4 @@ md"# Appendix"
 # ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╟─775e3420-6a1c-420d-bcba-7383dd35e617
-# ╟─60e95558-aeaf-4759-9460-8da1dbc28c54
+# ╠═60e95558-aeaf-4759-9460-8da1dbc28c54
