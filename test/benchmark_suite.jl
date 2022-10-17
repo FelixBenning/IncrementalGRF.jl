@@ -32,6 +32,21 @@ function defineSuite()
 	for n in [10, 100, 500]
 		suite[["oneDimGaussian","$n points"]] = B.@benchmarkable oneDimGaussian($n)
 	end
+
+	for dim in [1,10, 100]
+		local k = Kernels.SquaredExponential{Float64, dim}(randn()^2)
+		local x = randn(dim)
+		local y = randn(dim)
+
+		suite[["Kernel", "SquaredExponential", "$(dim)-dim"]] = B.@benchmarkable $k($x,$y)
+
+
+		tk = Kernels.TaylorCovariance{1}(k)
+		suite[
+			["Kernel", "SquaredExponential", "TaylorCovariance", "$(dim)-dim"]
+		] = B.@benchmarkable $tk($x,$y)
+	end
+			
 	return suite
 end
 
