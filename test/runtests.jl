@@ -6,7 +6,7 @@ using IncrementalGRF
 
 include("benchmark_suite.jl")
 
-@testset "Testing \\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
+@testset "\\(::PackedLowerTriangular{T}, ::AbstractVector{T}) where T<:Union{Float32,Float64}" begin
 	A = PackedLowerTriangular([1., 2, 3])
 	b = [1., 2.]
 	@test A\b ≈ [1.,0]
@@ -29,16 +29,33 @@ include("benchmark_suite.jl")
 	end
 end
 
-@testset "Performance Benchmarks" begin
-	old_results = nothing
-	try
-		old_results = B.load("local_benchmark.json")[1]
-	catch e
-		@test error("No benchmark yet.") skip=true
-	end
-	if !isnothing(old_results)
-		results = runTunedSuite("params.json", "new_local_benchmark.json", verbose=true, seconds=100)
-		judgements = B.judge(B.minimum(results), B.minimum(old_results))
-		@test isempty(B.regressions(judgements))
+@testset "Kernels" begin
+	@testset "SquaredExponential" begin
+		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(-1.)
+		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(0.)
+
+		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [1,3,50]
+			l = randn(type)^2
+			tk = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(l))
+			x = randn(type, dim)
+			y = randn(type, dim)
+			d = x-y
+			@test tk(x,y) ≈ tk(d)
+			@test tk(d) ≈ invoke(
+				Kernels._taylor1, 
+				Tuple{IsotropicKernel{type, dim}, AbstractVector{type}},
+				tk.k, d
+			)
+			@test tk(d) ≈ invoke(
+				Kernels._taylor1, 
+				Tuple{StationaryKernel{type, dim}, AbstractVector{type}},
+				tk.k, d
+			)
+			@test tk(d) ≈ invoke(
+				Kernels._taylor1, 
+				Tuple{CovarianceKernel{type, dim}, AbstractVector{type}, AbstractVector{type}},
+				tk.k, x, y
+			)
+		end
 	end
 end

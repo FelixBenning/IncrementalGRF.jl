@@ -29,6 +29,12 @@ end
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
 using IncrementalGRF
 
+# ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
+k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
+
+# ╔═╡ 32b7614a-f3aa-4cd3-82ba-0a5f6015be57
+k([0.,0, 0],[0.,0, 1])
+
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
 md"# Test 1-dim Gaussian Random Field"
 
@@ -54,7 +60,7 @@ begin
 		jitter=0.00001
 	)
 
-	discr = -5:0.3:5
+	discr = -5:0.5:5
 	grid = [drf([x,y]) for x in discr for y in discr]
 
 	
@@ -67,7 +73,6 @@ begin
 		discr_fine, discr_fine, (x->x[:val]).(grid_fine),
 		seriestype=:contour
 	)
-	# plot!(plt, [0], [0], quiver=(drf([0.,0])[:gradient]), seriestype=:quiver)
 end
 
 # ╔═╡ 9dbbc977-7641-4a68-98bc-31d5e5847233
@@ -153,6 +158,8 @@ md"# Appendix"
 # ╔═╡ Cell order:
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
+# ╠═b7b14883-2aae-40ab-bde1-6c0a186a9da8
+# ╠═32b7614a-f3aa-4cd3-82ba-0a5f6015be57
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
 # ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
 # ╠═310164cc-ad23-4db0-bcfe-ccf487d721ea

@@ -2,13 +2,13 @@ using LinearAlgebra: LinearAlgebra
 using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
 function oneDimGaussian(n)
-	grf = GaussianRandomField(Kernels.SquaredExponential{Float64,1}(1))
+	grf = GaussianRandomField(Kernels.SquaredExponential{Float64,1}(1.))
 	grf.(range(-50, stop=50, length=n))
 end
 
 function gradientDescent(dim, steps)
 	high_dim_rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64, dim}(1), jitter=0.00001)
+		Kernels.SquaredExponential{Float64, dim}(1.), jitter=0.00001)
 
 	local position = zeros(dim)
 	vals = Vector{Float64}(undef, steps)
@@ -32,6 +32,21 @@ function defineSuite()
 	for n in [10, 100, 500]
 		suite[["oneDimGaussian","$n points"]] = B.@benchmarkable oneDimGaussian($n)
 	end
+
+	for dim in [1,10, 100]
+		local k = Kernels.SquaredExponential{Float64, dim}(randn()^2)
+		local x = randn(dim)
+		local y = randn(dim)
+
+		suite[["Kernel", "SquaredExponential", "$(dim)-dim"]] = B.@benchmarkable $k($x,$y)
+
+
+		tk = Kernels.TaylorCovariance{1}(k)
+		suite[
+			["Kernel", "SquaredExponential", "TaylorCovariance", "$(dim)-dim"]
+		] = B.@benchmarkable $tk($x,$y)
+	end
+			
 	return suite
 end
 
@@ -41,16 +56,15 @@ function tuneSuite(suite, param_json::AbstractString="")
 	else 
 		B.tune!(suite)
 	end
-
-	if isfile(param_json) || (splitext(param_json)[2] == ".json")
-		B.save(param_json, B.params(suite))
-	end
 	return suite
 end
 
 function runTunedSuite(param_json::AbstractString="", result_path::AbstractString=""; verbose::Bool=true, seconds::Int=100)
 	suite = tuneSuite(defineSuite(), param_json)
 	result = B.run(suite, verbose=verbose, seconds=seconds)
+	if isfile(param_json) || (splitext(param_json)[2] == ".json")
+		B.save(param_json, B.params(suite))
+	end
 	if isfile(result_path) || (splitext(result_path)[2] == ".json")
 		B.save(result_path, result)
 	end
