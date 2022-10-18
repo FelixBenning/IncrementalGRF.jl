@@ -90,48 +90,107 @@ dim= 100
 steps = 25
 
 # ╔═╡ d329a235-fe41-4a03-a4b3-8a57c5898626
-function optimal_rate(step, loss, grad)
+function optimal_rate(loss, grad)
 	g_norm = LinearAlgebra.norm(grad)
 	a= loss/(2*g_norm)
 	return (a + sqrt(a^2+1))/g_norm
 end
 
-# ╔═╡ 8bddd6fc-b434-41f3-b958-5cf33ee024fd
-function gradientDescent(dim, steps, lr=optimal_rate)
-	high_dim_rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64, dim}(1), jitter=0.00001)
+# ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
+function optimRF(opt, dim, steps)
+	rf = DifferentiableGRF(
+		Kernels.SquaredExponential{Float64,dim}(0.1), 
+		jitter=0.000001
+	)
 
-	local position = zeros(dim)
+	local pos = zeros(dim)
 	vals = Vector{Float64}(undef, steps)
 	grads = Matrix{Float64}(undef, dim, steps)
 	for step in 1:steps
-		vals[step], grads[:,step] = high_dim_rf(position)
-		position -= lr(step, vals[step], grads[:,step]) * grads[:,step]
+		pos, vals[step], grads[:,step] = opt(rf, pos)
 	end
-	return vals, grads, high_dim_rf
+	return vals, grads, rf
 end
 
 # ╔═╡ 102fe6f5-5177-4a7d-ae30-516ff851358c
 repeats=10
 
+# ╔═╡ f4bb022d-3857-4378-bd9c-08c39f12132f
+abstract type Optimizer end
+
+# ╔═╡ 6769a366-071e-4b3a-99b7-3db5939fe537
+begin
+	mutable struct SquaredExponentialMomentum <: Optimizer
+		step::Int
+		scale
+		velocity
+		
+		SquaredExponentialMomentum() = new(1)
+	end
+	
+	function (opt::SquaredExponentialMomentum)(rf::DifferentiableGRF, pos)
+		y = pos
+		try
+			y += (opt.step-1)/(opt.step+2) * opt.velocity
+		catch e
+			e isa UndefRefError || rethrow(e)
+			opt.scale = rf.grf.cov.k.lengthScale
+		end
+		val, grad = rf(y)
+		opt.step += 1
+		new_pos = y - opt.scale * optimal_rate(val, grad) * grad
+		opt.velocity = new_pos - pos
+		return new_pos, val, grad
+
+	end
+	SquaredExponentialMomentum
+end
+
+# ╔═╡ 368cc59b-0650-49bd-92b8-a8ab8ff20df6
+begin
+	mutable struct DiminishingLRGD <: Optimizer
+		constant
+		step
+		DiminishingLRGD(constant) = new(constant, 1)
+	end
+	
+	function (opt::DiminishingLRGD)(rf::DifferentiableGRF, pos)
+		val, grad= rf(pos)
+		new_pos  = pos - opt.constant/opt.step * grad
+		opt.step +=1
+		return new_pos, val, grad
+	end
+	
+	DiminishingLRGD
+end
+
 # ╔═╡ 0402ec92-b8be-4e5f-8643-2d8382fc130e
 begin
 	gradPlot = plot()
 	@progress for it in 1:repeats # good GD
-		vals, _, _ =  gradientDescent(dim, steps)
+		vals, _, _ =  optimRF(dim, steps) do rf, pos
+			val, grad = rf(pos)
+			s = rf.grf.cov.k.lengthScale
+			new_pos = pos- s * optimal_rate(val, grad) * grad
+			return new_pos, val, grad
+		end
 		plot!(gradPlot, vals, label=((it==1) ? "optimal GD" : ""), color=1)
 	end
 	@progress for it in 1:repeats # 1/n GD
-		vals, _, _ =  gradientDescent(dim, steps, (step,_,_)->1/step)
+		vals, _, _ =  optimRF(DiminishingLRGD(1), dim, steps)
 		plot!(gradPlot, vals, label=((it==1) ? "1/n GD" : ""), color=2)
 	end
 	@progress for it in 1:repeats # 2/n GD
-		vals, _, _ =  gradientDescent(dim, steps, (step,_,_)->2/step)
+		vals, _, _ =  optimRF(DiminishingLRGD(2), dim, steps)
 		plot!(gradPlot, vals, label=((it==1) ? "2/n GD" : ""), color=3)
 	end
-	@progress for it in 1:repeats # 0.5/n GD
-		vals, _, _ =  gradientDescent(dim, steps, (step,_,_)->0.1/step)
+	@progress for it in 1:repeats # 0.1/n GD
+		vals, _, _ =  optimRF(DiminishingLRGD(0.1), dim, steps)
 		plot!(gradPlot, vals, label=((it==1) ? "0.1/n GD" : ""), color=4)
+	end
+	@progress for it in 1:repeats # good GD
+		vals, _, _ =  optimRF(SquaredExponentialMomentum(), dim, steps)
+		plot!(gradPlot, vals, label=((it==1) ? "optimal Momentum" : ""), color=5)
 	end
 	gradPlot
 end
@@ -139,7 +198,12 @@ end
 # ╔═╡ 11a92e07-aa82-4f04-adda-d7227858061e
 begin
 	orthPlot = plot()
-	vals, grads, _ = gradientDescent(dim, steps)
+	vals, grads, _ =  optimRF(dim, steps) do rf, pos
+		val, grad = rf(pos)
+		s = rf.grf.cov.k.lengthScale
+		new_pos = pos- s * optimal_rate(val, grad) * grad
+		return new_pos, val, grad
+	end
 	local grid = reshape(
 		[
 			dot(g1, g2)/(LinearAlgebra.norm(g1)^2)
@@ -150,10 +214,10 @@ begin
 	plot!(
 		orthPlot, grid, seriestype=:heatmap,
 		title=latexstring(
-			"Projection \$ π_{g_1}(g_2)=\\langle g_1,g_2\\rangle/\\|g_1\\|^2\$"
+			"Projection \$ π_{g^T}(g)=\\langle g,g^T\\rangle/\\|g^T\\|^2\$"
 		),
-		ylabel=latexstring("gradient \$g_2\$"), 
-		xlabel=latexstring("projection target gradient (\$g_1\$)"),
+		ylabel=latexstring("gradient \$g\$"), 
+		xlabel=latexstring("projection target gradient (\$g^T\$)"),
 		fontfamily="Computer Modern"
 	)
 	plot(vals, label=nothing)
@@ -182,10 +246,13 @@ md"# Appendix"
 # ╠═424b60c3-ff83-420f-90f6-503e1b03bb34
 # ╠═5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
 # ╠═d329a235-fe41-4a03-a4b3-8a57c5898626
-# ╠═8bddd6fc-b434-41f3-b958-5cf33ee024fd
+# ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 # ╠═102fe6f5-5177-4a7d-ae30-516ff851358c
+# ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
+# ╠═6769a366-071e-4b3a-99b7-3db5939fe537
+# ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
-# ╠═11a92e07-aa82-4f04-adda-d7227858061e
+# ╟─11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╟─775e3420-6a1c-420d-bcba-7383dd35e617
-# ╠═60e95558-aeaf-4759-9460-8da1dbc28c54
+# ╟─60e95558-aeaf-4759-9460-8da1dbc28c54
