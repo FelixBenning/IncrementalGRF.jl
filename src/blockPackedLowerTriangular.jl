@@ -52,11 +52,40 @@ end
 finds and returns x such that L * x = v
 """
 @inline function \(L::BlockPackedLowerTri{T,k}, B::AbstractMatrix{T}) where {T,k}
-    v_len = length(v)
+    B_len, B_width = size(B)
     @boundscheck v_len == L.used_rows || throw("L is of size $(L.used_rows) while v is of size $(v_len)")
-    result = Vector{T}(undef, v_len)
-    p = 0
+    n = L.used_rows ÷ k
+    result = Matrix{T}(undef, B_len, B_width)
+    b_size = k * k
+    g_row = 0
     # TODO
+    for row in 0:(n-1)
+        C = B[row*k+1:(row+1)*k, :] # k-sized slice of rows from B, +1 because 1-based indexing
+        for idx in 0:(row-1)
+            loc = (g_row + idx) * b_size
+            L = reshape(L.data[loc+1:loc+b_size])
+
+            Γ = result[idx*k+1:(idx+1)*k, :] # k-sized slice of result
+            C -= Γ * transpose(L)
+        end
+        g_row += row * b_size
+        L = reshape(L.data[g_row+1, (g_row+=b_size)], k, k)
+        result[row*k+1:(row+1)*k, :] = C / L #?
+    end
+
+    n_ = L.used_rows % k
+    C = B[(n*k+1):end,:]
+    for idx in 0:(n-1)
+        loc = (g_row + idx) * b_size
+        L = reshape(L.data[loc+1:loc+b_size])[:, 1:n_]
+        Γ = result[idx*k+1:(idx+1)*k, :]
+        C -= Γ * transpose(L)
+    end
+    g_row += n * b_size
+    L = reshape(L.data[g_row+1, (g_row+=b_size)], k, k)[1:n_,1:n_]
+    result[n*k+1:end, :] C / L
+
+    return result
 end
 
 """
@@ -67,9 +96,9 @@ end
 
 	Finally L.used_rows is incremented by k.
 """
-@inline function _extending_aligned_solve!(L::BlockPackedLowerTri{T,k}) where {T,k}
+@inline function _extending_aligned_solve!(L::BlockPackedLowerTri{T,k}, new_rows::Int) where {T,k}
     b_size = k * k
-    n = L.used_rows / k
+    n = L.used_rows ÷ k
     for row in 0:(n-1)
         t = (g(n) + row) * b_size
         C = reshape(L.data[t+1:t+b_size], k, k) # +1 because 1-based indexing
