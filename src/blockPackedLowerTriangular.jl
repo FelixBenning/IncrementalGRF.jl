@@ -58,7 +58,6 @@ finds and returns x such that L * x = v
     result = Matrix{T}(undef, B_len, B_width)
     b_size = k * k
     g_row = 0
-    # TODO
     for row in 0:(n-1)
         C = B[row*k+1:(row+1)*k, :] # k-sized slice of rows from B, +1 because 1-based indexing
         for idx in 0:(row-1)
