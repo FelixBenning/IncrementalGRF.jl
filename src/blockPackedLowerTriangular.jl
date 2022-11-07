@@ -74,15 +74,15 @@ finds and returns x such that L * x = v
 
     n_ = L.used_rows % k
     C = B[(n*k+1):end,:]
-    for idx in 0:(n-1)
+    for idx in 0:(n-1) # n-2?
         loc = (g_row + idx) * b_size
         L = reshape(L.data[loc+1:loc+b_size])[:, 1:n_]
         Γ = result[idx*k+1:(idx+1)*k, :]
         C -= Γ * transpose(L)
     end
-    g_row += n * b_size
+    g_row += n * b_size # n-1?
     L = reshape(L.data[g_row+1, (g_row+=b_size)], k, k)[1:n_,1:n_]
-    result[n*k+1:end, :] C / L
+    result[n*k+1:end, :] C / L # n-1?
 
     return result
 end
