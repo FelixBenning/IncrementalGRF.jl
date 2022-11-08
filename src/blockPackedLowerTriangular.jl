@@ -19,7 +19,7 @@ end
 @inline function Base.getindex(L::BlockPackedLowerTri{T,k}, i::Int, j::Int) where {T,k}
     @boundscheck checkbounds(L, i, j)
     if i < j
-        return 0
+        return zero(T) 
     end
     b_size = k * k
     block_loc = (row=(i - 1) ÷ b_size, col=(j - 1) ÷ b_size) # subtract 1 from i,j to think 0 based
