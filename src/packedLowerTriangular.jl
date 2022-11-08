@@ -51,7 +51,7 @@ finds and returns x such that A * x = v
 
 Manually implemented Fallback
 """
-@inline function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
+@inline function Base.:\(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where T
     n = length(v)
     result = Vector{T}(undef, n)
     p = 0
@@ -70,7 +70,7 @@ finds and returns x such that A * x = v
 
 BLAS acceleration for Float32 and Float64
 """
-@inline function \(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where {T<: Union{Float32, Float64}}
+@inline function Base.:\(A::PackedLowerTriangular{T}, v::AbstractVector{T}) where {T<: Union{Float32, Float64}}
 	@boundscheck size(A,1) == size(v,1) || throw("Dimensions of A and v do not match")
 	x = deepcopy(v)
 	@inbounds solve!(A, x) 
@@ -137,7 +137,7 @@ end
 
 solves A * X = B, where A is a PackedLowerTriangular matrix, and B is a matrix and returns X
 """
-function \(A::PackedLowerTriangular{T}, B::Matrix{T}) where {T}
+function Base.:\(A::PackedLowerTriangular{T}, B::Matrix{T}) where {T}
     # possible LAPACK: https://netlib.org/lapack/explore-html/d1/df5/group__real_o_t_h_e_rcomputational_ga0f647463c7ff1c2f9bdd74cecfa263c5.html#ga0f647463c7ff1c2f9bdd74cecfa263c5
     # (apparently loops over vectors as well)
     return mapslices(x -> A \ x, B, dims=[1])
