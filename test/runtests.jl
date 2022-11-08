@@ -30,19 +30,25 @@ include("benchmark_suite.jl")
 end
 
 @testset "\\(::BlockPackedLowerTri{T,k}, ::AbstractMatrix{T}) where {T,k}" begin
-	L = BlockPackedLowerTri{Float64,2}([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3)
-	@test L == [
-		1. 0. 0.
-		3. 4. 0.
-		5. 6. 9.
-	]
-	b = [
-		0.  1.
-		2.  3.
-		4.  5.
-	]	
-	x = L\b
-	@test L*x == b # consistency
+	@testset "Handwritten Basic" begin
+		L = BlockPackedLowerTri{Float64,2}([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3)
+		@test L == [
+			1. 0. 0.
+			3. 4. 0.
+			5. 6. 9.
+		]
+		b = [
+			0.  1.
+			2.  3.
+			4.  5.
+		]	
+		x = L\b
+		@test L*x == b # consistency
+	end
+
+	@testset "Random Tests" begin
+		# TODO	
+	end
 end
 
 @testset "Kernels" begin
