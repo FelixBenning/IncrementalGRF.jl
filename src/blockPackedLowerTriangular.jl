@@ -53,7 +53,7 @@ finds and returns x such that L * x = v
 """
 @inline function \(L::BlockPackedLowerTri{T,k}, B::AbstractMatrix{T}) where {T,k}
     B_len, B_width = size(B)
-    @boundscheck v_len == L.used_rows || throw("L is of size $(L.used_rows) while v is of size $(v_len)")
+    @boundscheck B_len == L.used_rows || throw("L is of size $(L.used_rows) while v is of size $(v_len)")
     n = L.used_rows ÷ k
     result = Matrix{T}(undef, B_len, B_width)
     b_size = k * k
@@ -62,30 +62,31 @@ finds and returns x such that L * x = v
         C = B[row*k+1:(row+1)*k, :] # k-sized slice of rows from B, +1 because 1-based indexing
         for idx in 0:(row-1)
             loc = (g_row + idx) * b_size
-            L = reshape(L.data[loc+1:loc+b_size])
+            L_block = reshape(L.data[loc+1:loc+b_size])
 
             Γ = result[idx*k+1:(idx+1)*k, :] # k-sized slice of result
-            C -= Γ * transpose(L)
+            C -= Γ * transpose(L_block)
         end
         g_row += row * b_size
-        L = reshape(L.data[g_row+1, (g_row+=b_size)], k, k)
-        result[row*k+1:(row+1)*k, :] = C / L #?
+        L_block = reshape(L.data[g_row+1:(g_row+=b_size)], k, k)
+        result[row*k+1:(row+1)*k, :] = C / L_block #?
     end
 
     n_ = L.used_rows % k
     C = B[(n*k+1):end,:]
     for idx in 0:(n-1) # n-2?
         loc = (g_row + idx) * b_size
-        L = reshape(L.data[loc+1:loc+b_size])[:, 1:n_]
+        L_block = reshape(L.data[loc+1:loc+b_size])[:, 1:n_]
         Γ = result[idx*k+1:(idx+1)*k, :]
-        C -= Γ * transpose(L)
+        C -= Γ * transpose(L_block)
     end
     g_row += n * b_size # n-1?
-    L = reshape(L.data[g_row+1, (g_row+=b_size)], k, k)[1:n_,1:n_]
-    result[n*k+1:end, :] C / L # n-1?
+    L_block = reshape(L.data[g_row+1, (g_row+=b_size)], k, k)[1:n_,1:n_]
+    result[n*k+1:end, :] = C / L_block # n-1?
 
     return result
 end
+
 
 """
 	Solve X * L^T = B in-place
