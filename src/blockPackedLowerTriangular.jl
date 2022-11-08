@@ -67,19 +67,19 @@ finds and returns x such that L * x = B
         end
         # Julia is column major, BlockPackedLowerTri is row major, so UpperTriangular is correct
         # (transpose is equivalent to switching col maj to row maj)
-        L_block = UpperTriangular(reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)) 
+        L_block = UpperTriangular(reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k))
         result[row*k+1:(row+1)*k, :] = C / L_block # we would need transpose here, but due to col maj we already did
     end
 
     n_ = L.used_rows % k
     C = B[(n*k+1):end, :]
     for idx in 0:(n-1)
-        L_block = reshape(L.data[b_idx+1:(b_idx+=b_size)],k,k)[:, 1:n_]
+        L_block = reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)[:, 1:n_]
         Γ = result[idx*k+1:(idx+1)*k, :]
         C -= transpose(L_block) * Γ
     end
     L_block = UpperTriangular(reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)[1:n_, 1:n_])
-    result[n*k+1:end, :] = L_block\C
+    result[n*k+1:end, :] = L_block \ C
 
     return result
 end
