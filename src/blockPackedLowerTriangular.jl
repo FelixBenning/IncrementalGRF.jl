@@ -22,17 +22,17 @@ end
         return zero(T) 
     end
     b_size = k * k
-    block_loc = (row=(i - 1) ÷ b_size, col=(j - 1) ÷ b_size) # subtract 1 from i,j to think 0 based
+    block_loc = (row=(i - 1) ÷ k, col=(j - 1) ÷ k) # subtract 1 from i,j to think 0 based
     block_nr = g(block_loc.row) + block_loc.col
 
     # add 1 because julia is annoyingly 1 based
-    @inbounds return L.data[block_nr*b_size+((i-1)%b_size)*k+(j-1)%b_size+1]
+    @inbounds return L.data[block_nr*b_size+((i-1)%k)*k+(j-1)%k+1]
 end
 
 @inline function Base.setindex(L::BlockPackedLowerTri{T,k}, x::T, i::Int, j::Int) where {T,k}
     @boundscheck checkbounds(L, i, j)
     if i < j
-        x == 0 || throw(ArgumentError(
+        x == zero(T) || throw(ArgumentError(
             "cannot set index in the upper triangular part " *
             "($i, $j) of a LowerTriangular matrix to a nonzero value ($x)")
         )
