@@ -3,7 +3,7 @@ using IncrementalGRF
 
 A = rand(5,5)
 
-L = BlockPackedLowerTri(A, 3)
+L = BlockPackedLowerTri(A, 2)
 
 b = [
 	0.  1.

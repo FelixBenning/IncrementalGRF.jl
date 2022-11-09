@@ -21,26 +21,30 @@ function BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T}
         b_size = blocksize * blocksize # elements in a block
         data = Vector{T}(undef, g(n + Int(r > 0)) * b_size) # number of blocks * b_size 
         b_idx = 0
-        for b_row in 1:n
-            data[b_idx+1:(b_idx+=b_row*b_size)] = vec(transpose(L[
+        for b_row in 1:n # iterate through block-rows
+            data_b_row = L[
                 ((b_row-1)*blocksize+1):b_row*blocksize,
                 1:b_row*blocksize
-            ]))
+            ]
+            data[b_idx+1:(b_idx+=b_row*b_size)] = mapslices(
+                reshape(data_b_row, b_size, :), # each col is one block
+                dims=[1]
+            ) do block_data # convert each col (i.e. block) to row major
+                reshape(block_data, blocksize, blocksize) |> transpose |> vec
+            end |> vec
         end
-        if r > 0 # residual
+        if r > 0 # residual (partial-filled block-row)
             for block in 0:(n-1)
-                data[b_idx+1:b_idx+r*blocksize] = vec(transpose(L[
-                    (n*blocksize+1):end,
-                    block*blocksize+1:(block+1)*blocksize
-                ]))
+                data[b_idx+1:b_idx+r*blocksize] = vec(transpose(
+                    L[(n*blocksize+1):end, block*blocksize+1:(block+1)*blocksize]
+                ))
                 b_idx += b_size
             end
-            # corner block
+            # lower right corner block (last block)
             for row in 0:(r-1)
-                data[b_idx+row*blocksize+1:b_idx+row*blocksize+r] = vec(transpose(L[
-                    (n*blocksize+row+1):(n*blocksize+row+1),
-                    (n*blocksize+1):end
-                ]))
+                data[b_idx+row*blocksize+1:b_idx+row*blocksize+r] = vec(transpose(
+                    L[(n*blocksize+row+1):(n*blocksize+row+1), (n*blocksize+1):end]
+                ))
             end
         end
         return BlockPackedLowerTri{T,blocksize}(data, rows)
