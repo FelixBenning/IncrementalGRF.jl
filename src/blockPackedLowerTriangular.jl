@@ -10,47 +10,47 @@ using LinearAlgebra: LinearAlgebra, UpperTriangular
 struct BlockPackedLowerTri{T,k} <: AbstractMatrix{T}
     data::Vector{T}
     used_rows::Int
-    BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T} = begin
-        rows, cols = size(L)
-        if rows == cols
-            n = rows ÷ blocksize  # filled rows of blocks
-            r = rows % blocksize
-
-            b_size = blocksize * blocksize # elements in a block
-            data = Vector{T}(undef, g(n + Int(r > 0)) * b_size) # number of blocks * b_size 
-            b_idx = 0
-            for b_row in 1:n
-                data[b_idx+1:(b_idx+=b_row * b_size)] = vec(transpose(L[
-                    ((b_row-1)*blocksize+1):b_row*blocksize,
-                    1:b_row*blocksize
-                ]))
-            end
-            if r > 0 # residual
-                for block in 0:(n-1)
-                    data[b_idx+1:b_idx + r * blocksize] = vec(transpose(L[
-                        (n*blocksize+1):end,
-                        block*blocksize+1:(block+1)*blocksize
-                    ]))
-                    b_idx += b_size
-                end
-                # corner block
-                for idx in 0:(r-1)
-                    data[b_idx+idx+1:b_idx + idx + r] = vec(transpose(L[
-                        (n*blocksize+idx+1):(n*blocksize+idx+1),
-                        (n*blocksize+1):end
-                    ]))
-                end
-            end
-            return new{T,blocksize}(data, rows)
-        else
-            ArgumentError(
-                "The matrix L is not quadratic. As the number of rows is $rows," *
-                "but the number of columns is $cols"
-            )
-        end
-    end
 end
 
+function BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T}
+    rows, cols = size(L)
+    if rows == cols
+        n = rows ÷ blocksize  # filled rows of blocks
+        r = rows % blocksize
+
+        b_size = blocksize * blocksize # elements in a block
+        data = Vector{T}(undef, g(n + Int(r > 0)) * b_size) # number of blocks * b_size 
+        b_idx = 0
+        for b_row in 1:n
+            data[b_idx+1:(b_idx+=b_row*b_size)] = vec(transpose(L[
+                ((b_row-1)*blocksize+1):b_row*blocksize,
+                1:b_row*blocksize
+            ]))
+        end
+        if r > 0 # residual
+            for block in 0:(n-1)
+                data[b_idx+1:b_idx+r*blocksize] = vec(transpose(L[
+                    (n*blocksize+1):end,
+                    block*blocksize+1:(block+1)*blocksize
+                ]))
+                b_idx += b_size
+            end
+            # corner block
+            for row in 0:(r-1)
+                data[b_idx+row*blocksize+1:b_idx+row*blocksize+r] = vec(transpose(L[
+                    (n*blocksize+row+1):(n*blocksize+row+1),
+                    (n*blocksize+1):end
+                ]))
+            end
+        end
+        return BlockPackedLowerTri{T,blocksize}(data, rows)
+    else
+        ArgumentError(
+            "The matrix L is not quadratic. As the number of rows is $rows," *
+            "but the number of columns is $cols"
+        )
+    end
+end
 
 @inline function Base.size(L::BlockPackedLowerTri{T,k}) where {T,k}
     return (L.used_rows, L.used_rows)
@@ -92,10 +92,10 @@ end
 finds and returns x such that L * x = B
 """
 @inline function Base.:\(L::BlockPackedLowerTri{T,k}, B::AbstractMatrix{T}) where {T,k}
-    B_len, B_width = size(B)
-    @boundscheck B_len == L.used_rows || throw("L is of size $(L.used_rows) while v is of size $(v_len)")
+    B_rows, B_cols = size(B)
+    @boundscheck B_rows == L.used_rows || throw("L is of size $(L.used_rows) while B has $(B_rows)")
     n = L.used_rows ÷ k
-    result = Matrix{T}(undef, B_len, B_width)
+    result = Matrix{T}(undef, B_rows, B_cols)
     b_size = k * k
     b_idx = 0
     for row in 0:(n-1)

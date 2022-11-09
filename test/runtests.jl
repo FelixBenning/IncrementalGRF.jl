@@ -49,6 +49,7 @@ end
 
 	@testset "Random Tests" begin
 		A = rand(5,5)
+		tril!(A)
 		@test A == BlockPackedLowerTri(A, 1)
 		@test A == BlockPackedLowerTri(A, 2)
 		@test A == BlockPackedLowerTri(A, 3)
