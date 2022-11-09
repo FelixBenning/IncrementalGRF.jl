@@ -26,6 +26,10 @@ function BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T}
                 ((b_row-1)*blocksize+1):b_row*blocksize,
                 1:b_row*blocksize
             ]
+            ## !!!! sliding-window: (0,2],(2,4],(4,6] achieved with (a, a+=2] i.e. [a+1, a+=2]
+            # (In a language with good indexing, half open intervals would already be a thing)
+            ## since every block row is increasing in size, our windows increase in size 
+            ### i.e. (a, a+= row_size] where row_size = b_row*b_size
             data[b_idx+1:(b_idx+=b_row*b_size)] = mapslices(
                 reshape(data_b_row, b_size, :), # each col is one block
                 dims=[1]
