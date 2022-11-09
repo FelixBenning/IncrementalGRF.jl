@@ -1,5 +1,7 @@
 using LinearAlgebra: LinearAlgebra, UpperTriangular
 
+@inline g(k::Int) = k * (k + 1) ÷ 2
+
 """
 	Block Packed Lower Triangular Matrix in Row Major
 
@@ -8,9 +10,47 @@ using LinearAlgebra: LinearAlgebra, UpperTriangular
 struct BlockPackedLowerTri{T,k} <: AbstractMatrix{T}
     data::Vector{T}
     used_rows::Int
+    BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T} = begin
+        rows, cols = size(L)
+        if rows == cols
+            n = rows ÷ blocksize  # filled rows of blocks
+            r = rows % blocksize
+
+            b_size = blocksize * blocksize # elements in a block
+            data = Vector{T}(undef, g(n + Int(r > 0)) * b_size) # number of blocks * b_size 
+            b_idx = 0
+            for b_row in 1:n
+                data[b_idx+1:(b_idx+=b_row * b_size)] = vec(transpose(L[
+                    ((b_row-1)*blocksize+1):b_row*blocksize,
+                    1:b_row*blocksize
+                ]))
+            end
+            if r > 0 # residual
+                for block in 0:(n-1)
+                    data[b_idx+1:b_idx + r * blocksize] = vec(transpose(L[
+                        (n*blocksize+1):end,
+                        block*blocksize+1:(block+1)*blocksize
+                    ]))
+                    b_idx += b_size
+                end
+                # corner block
+                for idx in 0:(r-1)
+                    data[b_idx+idx+1:b_idx + idx + r] = vec(transpose(L[
+                        (n*blocksize+idx+1):(n*blocksize+idx+1),
+                        (n*blocksize+1):end
+                    ]))
+                end
+            end
+            return new{T,blocksize}(data, rows)
+        else
+            ArgumentError(
+                "The matrix L is not quadratic. As the number of rows is $rows," *
+                "but the number of columns is $cols"
+            )
+        end
+    end
 end
 
-@inline g(k::Int) = k * (k + 1) ÷ 2
 
 @inline function Base.size(L::BlockPackedLowerTri{T,k}) where {T,k}
     return (L.used_rows, L.used_rows)

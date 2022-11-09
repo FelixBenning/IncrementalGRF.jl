@@ -31,12 +31,13 @@ end
 
 @testset "\\(::BlockPackedLowerTri{T,k}, ::AbstractMatrix{T}) where {T,k}" begin
 	@testset "Handwritten Basic" begin
-		L = BlockPackedLowerTri{Float64,2}([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], 3)
-		@test L == [
+		A = [
 			1. 0. 0.
 			3. 4. 0.
 			5. 6. 9.
 		]
+		L = BlockPackedLowerTri(A, 2)
+		@test L == A
 		b = [
 			0.  1.
 			2.  3.
@@ -47,7 +48,11 @@ end
 	end
 
 	@testset "Random Tests" begin
-		# TODO	
+		A = rand(5,5)
+		@test A == BlockPackedLowerTri(A, 1)
+		@test A == BlockPackedLowerTri(A, 2)
+		@test A == BlockPackedLowerTri(A, 3)
+		@test A == BlockPackedLowerTri(A, 4)
 	end
 end
 
