@@ -109,9 +109,9 @@ finds and returns x such that L * x = B
     for row in 0:(n-1)
         C = B[row*k+1:(row+1)*k, :] # k-sized slice of rows from B, +1 because 1-based indexing
         for idx in 0:(row-1)
-            L_block = reshape(L.data[b_idx+1:(b_idx+=b_size)])
+            L_block = reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)
             Γ = result[idx*k+1:(idx+1)*k, :] # k-sized slice of result
-            C -= Γ * transpose(L_block)
+            C -= transpose(L_block) * Γ
         end
         # Julia is column major, BlockPackedLowerTri is row major, so UpperTriangular is correct
         # (transpose is equivalent to switching col maj to row maj)

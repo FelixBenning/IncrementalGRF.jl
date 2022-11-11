@@ -48,12 +48,23 @@ end
 	end
 
 	@testset "Random Tests" begin
-		A = rand(5,5)
-		tril!(A)
-		@test A == BlockPackedLowerTri(A, 1)
-		@test A == BlockPackedLowerTri(A, 2)
-		@test A == BlockPackedLowerTri(A, 3)
-		@test A == BlockPackedLowerTri(A, 4)
+		@testset "Constructor Works" begin
+			A = rand(5,5)
+			tril!(A)
+			@test A == BlockPackedLowerTri(A, 1)
+			@test A == BlockPackedLowerTri(A, 2)
+			@test A == BlockPackedLowerTri(A, 3)
+			@test A == BlockPackedLowerTri(A, 4)
+		end
+		@testset "Solve Linear Equation" begin
+			A = rand(20,20)
+			b = rand(20,4)
+			tril!(A)
+			L = BlockPackedLowerTri(A, 3)
+			x = L\b
+			@test L * x ≈ b # consistency
+			@test x ≈ A\b
+		end
 	end
 end
 
