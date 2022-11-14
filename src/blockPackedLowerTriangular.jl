@@ -1,4 +1,7 @@
 using LinearAlgebra: LinearAlgebra
+using CUDA: CuArray, @allowscalar
+
+VectorStorage = Union{Vector{T},CuArray{T}} where T;
 
 """
 	Block Packed Lower Triangular Matrix in Row Major
@@ -6,7 +9,7 @@ using LinearAlgebra: LinearAlgebra
 	Blocksize kxk
 """
 struct BlockPackedLowerTri{T, k} <: AbstractArray{T,2}
-	data::Vector{T}
+	data::VectorStorage{T}
 	used_rows::Int
 end
 
@@ -16,7 +19,7 @@ end
 	return (L.used_rows, L.used_rows)
 end
 
-@inline function Base.getindex(L::BlockPackedLowerTri{T,k}, i::Int, j::Int) where {T,k}
+@inline @allowscalar function Base.getindex(L::BlockPackedLowerTri{T,k}, i::Int, j::Int) where {T,k}
 	@boundscheck checkbounds(L, i, j)
 	if i < j
 		return 0

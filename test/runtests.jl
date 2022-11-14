@@ -1,6 +1,7 @@
 using Test
 using Plots: plot
 using LinearAlgebra: LinearAlgebra, triu!, tril!
+using CUDA
 
 using IncrementalGRF 
 
