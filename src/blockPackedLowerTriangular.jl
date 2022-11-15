@@ -113,12 +113,12 @@ finds and returns x such that L * x = B
         for idx in 0:(row-1)
             L_block = reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)
             Γ = result[idx*k+1:(idx+1)*k, :] # k-sized slice of result
-            C -= transpose(L_block) * Γ
+            C -= transpose(Matrix(L_block)) * Γ # this always runs on the CPU
         end
         # Julia is column major, BlockPackedLowerTri is row major, so UpperTriangular is correct
         # (transpose is equivalent to switching col maj to row maj)
         L_block = transpose(UpperTriangular(reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)))
-        result[row*k+1:(row+1)*k, :] = L_block \ C
+        result[row*k+1:(row+1)*k, :] = Matrix(L_block) \ C # this always runs on the CPU
     end
 
     n_ = L.used_rows % k
@@ -126,10 +126,10 @@ finds and returns x such that L * x = B
     for idx in 0:(n-1)
         L_block = reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)[:, 1:n_]
         Γ = result[idx*k+1:(idx+1)*k, :]
-        C -= transpose(L_block) * Γ
+        C -= transpose(Matrix(L_block)) * Γ # this always runs on the CPU
     end
     L_block = transpose(UpperTriangular(reshape(L.data[b_idx+1:(b_idx+=b_size)], k, k)[1:n_, 1:n_]))
-    result[n*k+1:end, :] = L_block \ C
+    result[n*k+1:end, :] = Matrix(L_block) \ C # this always runs on the CPU
 
     return result
 end
