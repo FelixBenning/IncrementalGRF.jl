@@ -15,14 +15,14 @@ struct BlockPackedLowerTri{T, k} <: AbstractArray{T,2}
 	used_rows::Int
 end
 
-function BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T}
+function BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int, ::Storage = Vector{T}([0])) where {T, Storage<:VectorStorage{T}}
     rows, cols = size(L)
     if rows == cols
         n = rows ÷ blocksize  # filled rows of blocks
         r = rows % blocksize
 
         b_size = blocksize * blocksize # elements in a block
-        data = Vector{T}(undef, g(n + Int(r > 0)) * b_size) # number of blocks * b_size 
+        data = Storage(undef, g(n + Int(r > 0)) * b_size) # number of blocks * b_size 
         b_idx = 0
         for b_row in 1:n # iterate through block-rows
             data_b_row = L[
@@ -30,7 +30,6 @@ function BlockPackedLowerTri(L::AbstractMatrix{T}, blocksize::Int) where {T}
                 1:b_row*blocksize
             ]
             ## !!!! sliding-window: (0,2],(2,4],(4,6] achieved with (a, a+=2] i.e. [a+1, a+=2]
-            # (In a language with good indexing, half open intervals would already be a thing)
             ## since every block row is increasing in size, our windows increase in size 
             ### i.e. (a, a+= row_size] where row_size = b_row*b_size
             data[b_idx+1:(b_idx+=b_row*b_size)] = mapslices(
@@ -67,7 +66,7 @@ end
     return (L.used_rows, L.used_rows)
 end
 
-@inline @allowscalar function Base.getindex(L::BlockPackedLowerTri{T,k}, i::Int, j::Int) where {T,k}
+@inline function Base.getindex(L::BlockPackedLowerTri{T,k}, i::Int, j::Int) where {T,k}
     @boundscheck checkbounds(L, i, j)
     if i < j
         return zero(T)
