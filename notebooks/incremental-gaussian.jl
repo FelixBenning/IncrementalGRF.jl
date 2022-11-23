@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.13
+# v0.19.16
 
 using Markdown
 using InteractiveUtils
@@ -99,7 +99,7 @@ end
 # ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 function optimRF(opt, dim, steps)
 	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(0.1), 
+		Kernels.SquaredExponential{Float64,dim}(1), 
 		jitter=0.000001
 	)
 
@@ -138,7 +138,7 @@ begin
 		end
 		val, grad = rf(y)
 		opt.step += 1
-		new_pos = y - opt.scale * optimal_rate(val, grad) * grad
+		new_pos = y - opt.scale * optimal_rate(val, grad) * 0.5 * grad
 		opt.velocity = new_pos - pos
 		return new_pos, val, grad
 
