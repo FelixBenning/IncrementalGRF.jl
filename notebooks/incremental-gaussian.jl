@@ -14,6 +14,7 @@ begin
 	Pkg.add("ProgressLogging")
 	Pkg.add("PlutoUI")
 	Pkg.add("LaTeXStrings")
+	Pkg.add("Flux")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -30,6 +31,9 @@ end
 
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
 using IncrementalGRF
+
+# ╔═╡ 08a40e67-33ac-424c-806c-e775e90b4bd7
+using Flux: Flux
 
 # ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
 k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
@@ -83,6 +87,14 @@ plot!(plt, [0], [0], quiver=(drf([0.,0])[:gradient]), seriestype=:quiver)
 # ╔═╡ 601ef169-392c-4c6b-857d-eb20139d4e81
 md"# Gradient Descent"
 
+# ╔═╡ 2f621535-e1f5-44fc-b64e-de2512e439b4
+function (opt::Flux.Optimise.AbstractOptimiser)(rf::DifferentiableGRF, pos)
+	pos_copy = copy(pos)
+	val, grad = rf(pos_copy)
+	Flux.update!(opt, pos_copy, grad)
+	return pos_copy, val, grad
+end
+
 # ╔═╡ 424b60c3-ff83-420f-90f6-503e1b03bb34
 dim= 100
 
@@ -99,7 +111,7 @@ end
 # ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 function optimRF(opt, dim, steps)
 	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(1), 
+		Kernels.SquaredExponential{Float64,dim}(10), 
 		jitter=0.000001
 	)
 
@@ -129,7 +141,7 @@ begin
 	end
 	
 	function (opt::SquaredExponentialMomentum)(rf::DifferentiableGRF, pos)
-		y = pos
+		y = copy(pos)
 		try
 			y += (opt.step-1)/(opt.step+2) * opt.velocity
 		catch e
@@ -177,17 +189,21 @@ begin
 		plot!(gradPlot, vals, label=((it==1) ? "optimal GD" : ""), color=1)
 	end
 	@progress for it in 1:repeats # 1/n GD
-		vals, _, _ =  optimRF(DiminishingLRGD(1), dim, steps)
-		plot!(gradPlot, vals, label=((it==1) ? "1/n GD" : ""), color=2)
+		vals, _, _ =  optimRF(Flux.Optimise.Adam(), dim, steps)
+		plot!(gradPlot, vals, label=((it==1) ? "Adam" : ""), color=2)
 	end
-	@progress for it in 1:repeats # 2/n GD
-		vals, _, _ =  optimRF(DiminishingLRGD(2), dim, steps)
-		plot!(gradPlot, vals, label=((it==1) ? "2/n GD" : ""), color=3)
-	end
-	@progress for it in 1:repeats # 0.1/n GD
-		vals, _, _ =  optimRF(DiminishingLRGD(0.1), dim, steps)
-		plot!(gradPlot, vals, label=((it==1) ? "0.1/n GD" : ""), color=4)
-	end
+	# @progress for it in 1:repeats # 1/n GD
+	# 	vals, _, _ =  optimRF(DiminishingLRGD(1), dim, steps)
+	# 	plot!(gradPlot, vals, label=((it==1) ? "1/n GD" : ""), color=2)
+	# end
+	# @progress for it in 1:repeats # 2/n GD
+	# 	vals, _, _ =  optimRF(DiminishingLRGD(2), dim, steps)
+	# 	plot!(gradPlot, vals, label=((it==1) ? "2/n GD" : ""), color=3)
+	# end
+	# @progress for it in 1:repeats # 0.1/n GD
+	# 	vals, _, _ =  optimRF(DiminishingLRGD(0.1), dim, steps)
+	# 	plot!(gradPlot, vals, label=((it==1) ? "0.1/n GD" : ""), color=4)
+	# end
 	@progress for it in 1:repeats # good GD
 		vals, _, _ =  optimRF(SquaredExponentialMomentum(), dim, steps)
 		plot!(gradPlot, vals, label=((it==1) ? "optimal Momentum" : ""), color=5)
@@ -198,12 +214,7 @@ end
 # ╔═╡ 11a92e07-aa82-4f04-adda-d7227858061e
 begin
 	orthPlot = plot()
-	vals, grads, _ =  optimRF(dim, steps) do rf, pos
-		val, grad = rf(pos)
-		s = rf.grf.cov.k.lengthScale
-		new_pos = pos- s * optimal_rate(val, grad) * grad
-		return new_pos, val, grad
-	end
+	vals, grads, _ =  optimRF(Flux.Optimise.Adam(), dim, steps)
 	local grid = reshape(
 		[
 			dot(g1, g2)/(LinearAlgebra.norm(g1)^2)
@@ -243,6 +254,8 @@ md"# Appendix"
 # ╠═5e63220a-5bec-443b-b0a1-ebb20763ca1f
 # ╠═9dbbc977-7641-4a68-98bc-31d5e5847233
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
+# ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
+# ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
 # ╠═424b60c3-ff83-420f-90f6-503e1b03bb34
 # ╠═5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
 # ╠═d329a235-fe41-4a03-a4b3-8a57c5898626
@@ -252,7 +265,7 @@ md"# Appendix"
 # ╠═6769a366-071e-4b3a-99b7-3db5939fe537
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
-# ╟─11a92e07-aa82-4f04-adda-d7227858061e
+# ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╟─775e3420-6a1c-420d-bcba-7383dd35e617
-# ╟─60e95558-aeaf-4759-9460-8da1dbc28c54
+# ╠═60e95558-aeaf-4759-9460-8da1dbc28c54
