@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.16
+# v0.19.19
 
 using Markdown
 using InteractiveUtils
@@ -15,6 +15,8 @@ begin
 	Pkg.add("PlutoUI")
 	Pkg.add("LaTeXStrings")
 	Pkg.add("Flux")
+	Pkg.add("Distributions")
+	Pkg.add("RandomMatrices")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -35,6 +37,9 @@ using IncrementalGRF
 # ╔═╡ 08a40e67-33ac-424c-806c-e775e90b4bd7
 using Flux: Flux
 
+# ╔═╡ 7108db0b-b7d1-4646-b556-b32589acc7f9
+using RandomMatrices
+
 # ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
 k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
 
@@ -46,12 +51,6 @@ md"# Test 1-dim Gaussian Random Field"
 
 # ╔═╡ 51be2a30-538d-4d10-bb69-53c0aac3d92f
 rf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1.))
-
-# ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
-x = -10:0.1:10
-
-# ╔═╡ a99bbd91-a5f1-4b21-bc63-90014d7b3914
-plot(x, vcat(rf.(x)...), show=true)
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
 md"# Test 2-dim Gaussian Random Field"
@@ -237,8 +236,50 @@ end
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
 orthPlot
 
+# ╔═╡ 2b9403b7-9027-4e99-aaf4-06e7362f761f
+md"# Minima Distribution"
+
+# ╔═╡ e0638765-1104-408f-bbd1-968e20d800ec
+
+
+# ╔═╡ e20e20fd-db5b-4a79-9291-482a7f77b150
+t =TracyWidom()
+
+# ╔═╡ e1f1c1a3-a43b-4703-ba40-bd7f412919e4
+F(x) = cdf(t, x, beta=1)
+
+# ╔═╡ a99bbd91-a5f1-4b21-bc63-90014d7b3914
+plot(x, vcat(rf.(x)...), show=true)
+
+# ╔═╡ f90425a5-fbc5-466d-a3ce-6941289e4e6b
+cdf_points = F.(x)
+
+# ╔═╡ 36d0e9cf-6f10-4070-9860-1a64fc38782a
+pdf_points = map((x,y)-> (y-x)/0.01, cdf_points[1:end-1], cdf_points[2:end])
+
+# ╔═╡ ea3b9197-8838-4cf6-a6cd-161dc36b6cea
+plot(x[2:end], pdf_points, label="TracyWidom pdf")
+
+# ╔═╡ 8f5bfd54-3d12-41be-979b-27a4b1aa4782
+F(-1.25)
+
 # ╔═╡ 775e3420-6a1c-420d-bcba-7383dd35e617
 md"# Appendix"
+
+# ╔═╡ 27d6afa1-969d-41d9-b6a3-348de174fe0b
+
+
+# ╔═╡ ab9ff0fd-0fd5-46de-baf0-2cef58e630ef
+
+
+# ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
+# ╠═╡ disabled = true
+#=╠═╡
+x = -10:0.1:10
+  ╠═╡ =#
+
+# ╔═╡ 09d130ae-1ede-4546-9a20-a94c3c86dcf7
+x = -5:0.01:5
 
 # ╔═╡ Cell order:
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -267,5 +308,17 @@ md"# Appendix"
 # ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
+# ╟─2b9403b7-9027-4e99-aaf4-06e7362f761f
+# ╠═e0638765-1104-408f-bbd1-968e20d800ec
+# ╟─7108db0b-b7d1-4646-b556-b32589acc7f9
+# ╠═e20e20fd-db5b-4a79-9291-482a7f77b150
+# ╠═e1f1c1a3-a43b-4703-ba40-bd7f412919e4
+# ╠═09d130ae-1ede-4546-9a20-a94c3c86dcf7
+# ╠═f90425a5-fbc5-466d-a3ce-6941289e4e6b
+# ╠═36d0e9cf-6f10-4070-9860-1a64fc38782a
+# ╠═ea3b9197-8838-4cf6-a6cd-161dc36b6cea
+# ╠═8f5bfd54-3d12-41be-979b-27a4b1aa4782
 # ╟─775e3420-6a1c-420d-bcba-7383dd35e617
 # ╠═60e95558-aeaf-4759-9460-8da1dbc28c54
+# ╠═27d6afa1-969d-41d9-b6a3-348de174fe0b
+# ╠═ab9ff0fd-0fd5-46de-baf0-2cef58e630ef
