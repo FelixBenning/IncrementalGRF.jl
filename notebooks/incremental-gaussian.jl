@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.16
+# v0.19.22
 
 using Markdown
 using InteractiveUtils
@@ -214,10 +214,10 @@ end
 # ╔═╡ 11a92e07-aa82-4f04-adda-d7227858061e
 begin
 	orthPlot = plot()
-	vals, grads, _ =  optimRF(Flux.Optimise.Adam(), dim, steps)
+	vals, grads, _ =  optimRF(SquaredExponentialMomentum(), dim, steps)
 	local grid = reshape(
 		[
-			dot(g1, g2)/(LinearAlgebra.norm(g1)^2)
+			dot(g1, g2)/(LinearAlgebra.norm(g2)^2)
 			for g1 in eachcol(grads) for g2 in eachcol(grads)
 		], 
 		size(grads, 2), :
@@ -236,6 +236,9 @@ end
 
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
 orthPlot
+
+# ╔═╡ 8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
+plot(map(LinearAlgebra.norm, eachcol(grads)))
 
 # ╔═╡ 775e3420-6a1c-420d-bcba-7383dd35e617
 md"# Appendix"
@@ -267,5 +270,6 @@ md"# Appendix"
 # ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
+# ╠═8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 # ╟─775e3420-6a1c-420d-bcba-7383dd35e617
 # ╠═60e95558-aeaf-4759-9460-8da1dbc28c54
