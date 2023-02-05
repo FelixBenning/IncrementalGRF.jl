@@ -15,6 +15,8 @@ begin
 	Pkg.add("PlutoUI")
 	Pkg.add("LaTeXStrings")
 	Pkg.add("Flux")
+	Pkg.add("Distributions")
+	Pkg.add("RandomMatrices")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -34,6 +36,9 @@ using IncrementalGRF
 
 # ╔═╡ 08a40e67-33ac-424c-806c-e775e90b4bd7
 using Flux: Flux
+
+# ╔═╡ 506140dd-5b00-4475-b367-f101260aa637
+using RandomMatrices
 
 # ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
 k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
@@ -240,6 +245,27 @@ orthPlot
 # ╔═╡ 8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 plot(map(LinearAlgebra.norm, eachcol(grads)))
 
+# ╔═╡ d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
+md"# Minima Distribution"
+
+# ╔═╡ 94188b20-75fc-4fa1-b5a0-121881e1b59a
+t =TracyWidom()
+
+# ╔═╡ 4da265fa-5e46-4469-b37e-5c67c34c56d2
+F(x) = cdf(t, x, beta=1)
+
+# ╔═╡ 45bc3e50-20d5-43b0-be2b-891e12107afc
+cdf_points = F.(x)
+
+# ╔═╡ d96e1366-5302-48d6-a56e-9a1cef69aa63
+pdf_points = map((x,y)-> (y-x)/0.01, cdf_points[1:end-1], cdf_points[2:end])
+
+# ╔═╡ 9bd87493-9874-41df-b979-98d3890836af
+plot(x[2:end], pdf_points, label="TracyWidom pdf")
+
+# ╔═╡ ecd8a804-851f-4cd1-b84d-f465cbe6658c
+F(-1.25)
+
 # ╔═╡ 775e3420-6a1c-420d-bcba-7383dd35e617
 md"# Appendix"
 
@@ -271,5 +297,13 @@ md"# Appendix"
 # ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╠═8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
+# ╟─d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
+# ╠═506140dd-5b00-4475-b367-f101260aa637
+# ╠═94188b20-75fc-4fa1-b5a0-121881e1b59a
+# ╠═4da265fa-5e46-4469-b37e-5c67c34c56d2
+# ╠═45bc3e50-20d5-43b0-be2b-891e12107afc
+# ╠═d96e1366-5302-48d6-a56e-9a1cef69aa63
+# ╠═9bd87493-9874-41df-b979-98d3890836af
+# ╠═ecd8a804-851f-4cd1-b84d-f465cbe6658c
 # ╟─775e3420-6a1c-420d-bcba-7383dd35e617
 # ╠═60e95558-aeaf-4759-9460-8da1dbc28c54
