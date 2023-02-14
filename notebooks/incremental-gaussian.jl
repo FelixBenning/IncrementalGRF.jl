@@ -63,7 +63,7 @@ rf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1.))
 x = -10:0.1:10
 
 # ╔═╡ a99bbd91-a5f1-4b21-bc63-90014d7b3914
-plot(x, vcat(rf.(x)...), show=true)
+plot(x, vcat(rf.(x)...), show=true, label="")
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
 md"# Test 2-dim Gaussian Random Field"
@@ -97,7 +97,7 @@ end
 plot!(plt, [0], [0], quiver=(drf([0.,0])[:gradient]), seriestype=:quiver)
 
 # ╔═╡ 601ef169-392c-4c6b-857d-eb20139d4e81
-md"# Gradient Descent"
+md"# Optimization on Random Fields"
 
 # ╔═╡ 2f621535-e1f5-44fc-b64e-de2512e439b4
 function (opt::Flux.Optimise.AbstractOptimiser)(rf::DifferentiableGRF, pos)
@@ -209,20 +209,30 @@ steps = 25
 # ╔═╡ 424b60c3-ff83-420f-90f6-503e1b03bb34
 dim= 100
 
+# ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
+available_optimiser = Dict(
+	:RFI_GD=>SquaredExponentialGrad(),
+	:RFI_Momentum=>SquaredExponentialMomentum(),
+	:Adam=> Flux.Optimise.Adam()
+)
+
+# ╔═╡ 06669377-8c96-4b3b-83d1-855ef842f66f
+@bind active_optimiser PlutoUI.MultiCheckBox(
+	collect(keys(available_optimiser)), orientation=:column, select_all=true
+)
+
 # ╔═╡ 0402ec92-b8be-4e5f-8643-2d8382fc130e
 begin
 	gradPlot = plot()
-	optimiser = Dict(
-		"RFI GD"=>SquaredExponentialGrad(),
-		"RFI Momentum"=>SquaredExponentialMomentum(),
-		"Adam"=> Flux.Optimise.Adam()
-	)
+	optimiser = filter(available_optimiser) do (key, _)
+		key in active_optimiser
+	end
 	final_val_hists = Dict()
 	for (idx, (name, opt)) in enumerate(optimiser)
 		final_val_hists[name] = Vector(undef, repeats)
 		@progress for it in 1:repeats # good GD
 			vals, _, _ =  optimRF(opt, dim, steps)
-			plot!(gradPlot, vals, label=((it==1) ? name : ""), color=idx)
+			plot!(gradPlot, vals, label=((it==1) ? String(name) : ""), color=idx)
 			final_val_hists[name][it] = vals[end]
 		end
 	end
@@ -236,15 +246,18 @@ final_val_hists
 md"## End of Iteration Value Distribution"
 
 # ╔═╡ edb84732-fbca-4248-b47e-4c5459df2674
-@bind opt_key PlutoUI.Select(String.(keys(optimiser)))
+@bind opt_key PlutoUI.Select([x=> String(x) for x in active_optimiser])
 
 # ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
 begin
 	plot(
 		final_val_hists[opt_key], 
-		seriestype=:histogram, normalize=:pdf, bins=repeats ÷ 10, label=opt_key
+		seriestype=:histogram, normalize=:pdf, bins=repeats ÷ 10, label=String(opt_key)
 	)
 end
+
+# ╔═╡ c0df62ff-d312-45d6-a001-0ac9c1b4e34b
+md"## Gradient Directions"
 
 # ╔═╡ 11a92e07-aa82-4f04-adda-d7227858061e
 begin
@@ -269,9 +282,6 @@ begin
 	)
 	plot(vals, label=nothing)
 end
-
-# ╔═╡ c0df62ff-d312-45d6-a001-0ac9c1b4e34b
-md"## Gradient Directions"
 
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
 orthPlot
@@ -308,25 +318,27 @@ md"# Appendix"
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
 # ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
-# ╠═310164cc-ad23-4db0-bcfe-ccf487d721ea
-# ╠═a99bbd91-a5f1-4b21-bc63-90014d7b3914
+# ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
+# ╟─a99bbd91-a5f1-4b21-bc63-90014d7b3914
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
-# ╠═d85c6f84-91a1-4b90-a19a-c981ed331d5c
-# ╠═5e63220a-5bec-443b-b0a1-ebb20763ca1f
-# ╠═9dbbc977-7641-4a68-98bc-31d5e5847233
-# ╟─601ef169-392c-4c6b-857d-eb20139d4e81
+# ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
+# ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
+# ╟─9dbbc977-7641-4a68-98bc-31d5e5847233
+# ╠═601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
 # ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
 # ╟─d329a235-fe41-4a03-a4b3-8a57c5898626
-# ╠═6769a366-071e-4b3a-99b7-3db5939fe537
-# ╠═bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
+# ╟─6769a366-071e-4b3a-99b7-3db5939fe537
+# ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 # ╠═102fe6f5-5177-4a7d-ae30-516ff851358c
 # ╠═5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
 # ╠═424b60c3-ff83-420f-90f6-503e1b03bb34
-# ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
+# ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
+# ╟─06669377-8c96-4b3b-83d1-855ef842f66f
+# ╟─0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╠═4e5278dd-3b2e-4728-8ad5-c5c3c435bd8e
