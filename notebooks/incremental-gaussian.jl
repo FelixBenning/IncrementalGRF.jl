@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 60e95558-aeaf-4759-9460-8da1dbc28c54
 begin
 	import Pkg
@@ -37,14 +47,11 @@ using IncrementalGRF
 # ╔═╡ 08a40e67-33ac-424c-806c-e775e90b4bd7
 using Flux: Flux
 
+# ╔═╡ 4e5278dd-3b2e-4728-8ad5-c5c3c435bd8e
+using PlutoUI: PlutoUI
+
 # ╔═╡ 506140dd-5b00-4475-b367-f101260aa637
 using RandomMatrices
-
-# ╔═╡ b7b14883-2aae-40ab-bde1-6c0a186a9da8
-k = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{Float64,3}(1))
-
-# ╔═╡ 32b7614a-f3aa-4cd3-82ba-0a5f6015be57
-k([0.,0, 0],[0.,0, 1])
 
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
 md"# Test 1-dim Gaussian Random Field"
@@ -100,11 +107,8 @@ function (opt::Flux.Optimise.AbstractOptimiser)(rf::DifferentiableGRF, pos)
 	return pos_copy, val, grad
 end
 
-# ╔═╡ 424b60c3-ff83-420f-90f6-503e1b03bb34
-dim= 100
-
-# ╔═╡ 5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
-steps = 25
+# ╔═╡ f4bb022d-3857-4378-bd9c-08c39f12132f
+abstract type Optimizer end
 
 # ╔═╡ d329a235-fe41-4a03-a4b3-8a57c5898626
 function optimal_rate(loss, grad)
@@ -112,28 +116,6 @@ function optimal_rate(loss, grad)
 	a= loss/(2*g_norm)
 	return (a + sqrt(a^2+1))/g_norm
 end
-
-# ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
-function optimRF(opt, dim, steps)
-	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(10), 
-		jitter=0.000001
-	)
-
-	local pos = zeros(dim)
-	vals = Vector{Float64}(undef, steps)
-	grads = Matrix{Float64}(undef, dim, steps)
-	for step in 1:steps
-		pos, vals[step], grads[:,step] = opt(rf, pos)
-	end
-	return vals, grads, rf
-end
-
-# ╔═╡ 102fe6f5-5177-4a7d-ae30-516ff851358c
-repeats=10
-
-# ╔═╡ f4bb022d-3857-4378-bd9c-08c39f12132f
-abstract type Optimizer end
 
 # ╔═╡ 6769a366-071e-4b3a-99b7-3db5939fe537
 begin
@@ -163,6 +145,27 @@ begin
 	SquaredExponentialMomentum
 end
 
+# ╔═╡ bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
+begin
+	mutable struct SquaredExponentialGrad <: Optimizer
+		scale
+		SquaredExponentialGrad() = new()
+	end
+
+	function (opt::SquaredExponentialGrad)(rf::DifferentiableGRF, pos)
+		try
+			opt.scale
+		catch e
+			e isa UndefRefError || rethrow(e)
+			opt.scale = rf.grf.cov.k.lengthScale
+		end
+		val, grad = rf(pos)
+		new_pos = pos - opt.scale * optimal_rate(val, grad) * grad
+		return new_pos, val, grad
+	end
+	SquaredExponentialGrad
+end
+
 # ╔═╡ 368cc59b-0650-49bd-92b8-a8ab8ff20df6
 begin
 	mutable struct DiminishingLRGD <: Optimizer
@@ -181,45 +184,73 @@ begin
 	DiminishingLRGD
 end
 
+# ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
+function optimRF(opt, dim, steps)
+	rf = DifferentiableGRF(
+		Kernels.SquaredExponential{Float64,dim}(0.1), 
+		jitter=0.000001
+	)
+
+	local pos = zeros(dim)
+	vals = Vector{Float64}(undef, steps)
+	grads = Matrix{Float64}(undef, dim, steps)
+	for step in 1:steps
+		pos, vals[step], grads[:,step] = opt(rf, pos)
+	end
+	return vals, grads, rf
+end
+
+# ╔═╡ 102fe6f5-5177-4a7d-ae30-516ff851358c
+repeats=100
+
+# ╔═╡ 5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
+steps = 25
+
+# ╔═╡ 424b60c3-ff83-420f-90f6-503e1b03bb34
+dim= 100
+
 # ╔═╡ 0402ec92-b8be-4e5f-8643-2d8382fc130e
 begin
 	gradPlot = plot()
-	@progress for it in 1:repeats # good GD
-		vals, _, _ =  optimRF(dim, steps) do rf, pos
-			val, grad = rf(pos)
-			s = rf.grf.cov.k.lengthScale
-			new_pos = pos- s * optimal_rate(val, grad) * grad
-			return new_pos, val, grad
+	optimiser = Dict(
+		"RFI GD"=>SquaredExponentialGrad(),
+		"RFI Momentum"=>SquaredExponentialMomentum(),
+		"Adam"=> Flux.Optimise.Adam()
+	)
+	final_val_hists = Dict()
+	for (idx, (name, opt)) in enumerate(optimiser)
+		final_val_hists[name] = Vector(undef, repeats)
+		@progress for it in 1:repeats # good GD
+			vals, _, _ =  optimRF(opt, dim, steps)
+			plot!(gradPlot, vals, label=((it==1) ? name : ""), color=idx)
+			final_val_hists[name][it] = vals[end]
 		end
-		plot!(gradPlot, vals, label=((it==1) ? "optimal GD" : ""), color=1)
-	end
-	@progress for it in 1:repeats # 1/n GD
-		vals, _, _ =  optimRF(Flux.Optimise.Adam(), dim, steps)
-		plot!(gradPlot, vals, label=((it==1) ? "Adam" : ""), color=2)
-	end
-	# @progress for it in 1:repeats # 1/n GD
-	# 	vals, _, _ =  optimRF(DiminishingLRGD(1), dim, steps)
-	# 	plot!(gradPlot, vals, label=((it==1) ? "1/n GD" : ""), color=2)
-	# end
-	# @progress for it in 1:repeats # 2/n GD
-	# 	vals, _, _ =  optimRF(DiminishingLRGD(2), dim, steps)
-	# 	plot!(gradPlot, vals, label=((it==1) ? "2/n GD" : ""), color=3)
-	# end
-	# @progress for it in 1:repeats # 0.1/n GD
-	# 	vals, _, _ =  optimRF(DiminishingLRGD(0.1), dim, steps)
-	# 	plot!(gradPlot, vals, label=((it==1) ? "0.1/n GD" : ""), color=4)
-	# end
-	@progress for it in 1:repeats # good GD
-		vals, _, _ =  optimRF(SquaredExponentialMomentum(), dim, steps)
-		plot!(gradPlot, vals, label=((it==1) ? "optimal Momentum" : ""), color=5)
 	end
 	gradPlot
+end
+
+# ╔═╡ 33ada8c8-8b00-4759-b29e-b0e8d6957e3e
+final_val_hists
+
+# ╔═╡ 1ad684c6-129c-449b-9eea-3a8c9dd0ac96
+md"## End of Iteration Value Distribution"
+
+# ╔═╡ edb84732-fbca-4248-b47e-4c5459df2674
+@bind opt_key PlutoUI.Select(String.(keys(optimiser)))
+
+# ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
+begin
+	plot(
+		final_val_hists[opt_key], 
+		seriestype=:histogram, normalize=:pdf, bins=repeats ÷ 10, label=opt_key
+	)
 end
 
 # ╔═╡ 11a92e07-aa82-4f04-adda-d7227858061e
 begin
 	orthPlot = plot()
-	vals, grads, _ =  optimRF(SquaredExponentialMomentum(), dim, steps)
+	opt = SquaredExponentialGrad()
+	vals, grads, _ =  optimRF(opt, dim, steps)
 	local grid = reshape(
 		[
 			dot(g1, g2)/(LinearAlgebra.norm(g2)^2)
@@ -238,6 +269,9 @@ begin
 	)
 	plot(vals, label=nothing)
 end
+
+# ╔═╡ c0df62ff-d312-45d6-a001-0ac9c1b4e34b
+md"## Gradient Directions"
 
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
 orthPlot
@@ -272,8 +306,6 @@ md"# Appendix"
 # ╔═╡ Cell order:
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
-# ╠═b7b14883-2aae-40ab-bde1-6c0a186a9da8
-# ╠═32b7614a-f3aa-4cd3-82ba-0a5f6015be57
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
 # ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
 # ╠═310164cc-ad23-4db0-bcfe-ccf487d721ea
@@ -285,16 +317,23 @@ md"# Appendix"
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
-# ╠═424b60c3-ff83-420f-90f6-503e1b03bb34
-# ╠═5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
-# ╠═d329a235-fe41-4a03-a4b3-8a57c5898626
+# ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
+# ╟─d329a235-fe41-4a03-a4b3-8a57c5898626
+# ╠═6769a366-071e-4b3a-99b7-3db5939fe537
+# ╠═bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
+# ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 # ╠═102fe6f5-5177-4a7d-ae30-516ff851358c
-# ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
-# ╠═6769a366-071e-4b3a-99b7-3db5939fe537
-# ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
+# ╠═5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
+# ╠═424b60c3-ff83-420f-90f6-503e1b03bb34
 # ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
-# ╠═11a92e07-aa82-4f04-adda-d7227858061e
+# ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
+# ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
+# ╠═4e5278dd-3b2e-4728-8ad5-c5c3c435bd8e
+# ╟─edb84732-fbca-4248-b47e-4c5459df2674
+# ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
+# ╟─11a92e07-aa82-4f04-adda-d7227858061e
+# ╟─c0df62ff-d312-45d6-a001-0ac9c1b4e34b
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╠═8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 # ╟─d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
