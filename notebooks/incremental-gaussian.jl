@@ -27,6 +27,7 @@ begin
 	Pkg.add("Flux")
 	Pkg.add("Distributions")
 	Pkg.add("RandomMatrices")
+	Pkg.add("HypertextLiteral")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -37,7 +38,8 @@ begin
 	using Plots: plot, plot!
 	using ProgressLogging: @progress
 	using Logging: Logging, SimpleLogger, with_logger
-	using PlutoUI: Slider
+	using PlutoUI: Slider, PlutoUI
+	using HypertextLiteral: @htl, HypertextLiteral
 	using LaTeXStrings
 end
 
@@ -46,9 +48,6 @@ using IncrementalGRF
 
 # ╔═╡ 08a40e67-33ac-424c-806c-e775e90b4bd7
 using Flux: Flux
-
-# ╔═╡ 4e5278dd-3b2e-4728-8ad5-c5c3c435bd8e
-using PlutoUI: PlutoUI
 
 # ╔═╡ 506140dd-5b00-4475-b367-f101260aa637
 using RandomMatrices
@@ -184,10 +183,44 @@ begin
 	DiminishingLRGD
 end
 
+# ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
+begin
+	local optimiser = [:RFI_GD, :RFI_Momentum, :Adam]
+	@bind ui PlutoUI.confirm(
+		PlutoUI.combine() do Child
+			@htl("""
+			<h3>Random Field Parameters</h3>
+			<p>
+				dimension: $(Child(:dim, PlutoUI.NumberField(1:300, default=30)))
+				Covariance-scale: $(
+					Child(:scale, PlutoUI.NumberField(0.01:0.01:10, default=0.1))
+				)
+			</p>
+			<h3>Optimization Parameters</h3>
+			<p>
+				steps: $(Child(:steps, PlutoUI.NumberField(1:60, default=25)))
+				repeats: $(Child(:repeats, PlutoUI.NumberField(1:1000, default=10)))
+
+			</p>
+			
+			<h3>Optimizers</h3>
+
+			$(Child(
+				"active_optimiser",
+				PlutoUI.MultiCheckBox(
+					optimiser, orientation=:column,
+					default=optimiser
+				)
+			))
+			""")
+		end
+	)
+end
+
 # ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 function optimRF(opt, dim, steps)
 	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(0.1), 
+		Kernels.SquaredExponential{Float64,dim}(ui.scale), 
 		jitter=0.000001
 	)
 
@@ -200,38 +233,27 @@ function optimRF(opt, dim, steps)
 	return vals, grads, rf
 end
 
-# ╔═╡ 102fe6f5-5177-4a7d-ae30-516ff851358c
-repeats=100
-
-# ╔═╡ 5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
-steps = 25
-
-# ╔═╡ 424b60c3-ff83-420f-90f6-503e1b03bb34
-dim= 100
-
-# ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
-available_optimiser = Dict(
-	:RFI_GD=>SquaredExponentialGrad(),
-	:RFI_Momentum=>SquaredExponentialMomentum(),
-	:Adam=> Flux.Optimise.Adam()
-)
-
-# ╔═╡ 06669377-8c96-4b3b-83d1-855ef842f66f
-@bind active_optimiser PlutoUI.MultiCheckBox(
-	collect(keys(available_optimiser)), orientation=:column, select_all=true
-)
+# ╔═╡ b86794ca-a3ca-4947-adf3-6be9289e7465
+begin
+	ui.dim # force a refresh on dimension change
+	available_optimiser = Dict(
+		:RFI_GD=>SquaredExponentialGrad(),
+		:RFI_Momentum=>SquaredExponentialMomentum(),
+		:Adam=> Flux.Optimise.Adam()
+	)
+end
 
 # ╔═╡ 0402ec92-b8be-4e5f-8643-2d8382fc130e
 begin
 	gradPlot = plot()
 	optimiser = filter(available_optimiser) do (key, _)
-		key in active_optimiser
+		key in ui.active_optimiser
 	end
 	final_val_hists = Dict()
 	for (idx, (name, opt)) in enumerate(optimiser)
-		final_val_hists[name] = Vector(undef, repeats)
-		@progress for it in 1:repeats # good GD
-			vals, _, _ =  optimRF(opt, dim, steps)
+		final_val_hists[name] = Vector(undef, ui.repeats)
+		@progress for it in 1:ui.repeats # good GD
+			vals, _, _ =  optimRF(opt, ui.dim, ui.steps)
 			plot!(gradPlot, vals, label=((it==1) ? String(name) : ""), color=idx)
 			final_val_hists[name][it] = vals[end]
 		end
@@ -246,13 +268,13 @@ final_val_hists
 md"## End of Iteration Value Distribution"
 
 # ╔═╡ edb84732-fbca-4248-b47e-4c5459df2674
-@bind opt_key PlutoUI.Select([x=> String(x) for x in active_optimiser])
+@bind opt_key PlutoUI.Select([x=> String(x) for x in ui.active_optimiser])
 
 # ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
 begin
 	plot(
 		final_val_hists[opt_key], 
-		seriestype=:histogram, normalize=:pdf, bins=repeats ÷ 10, label=String(opt_key)
+		seriestype=:histogram, normalize=:pdf, bins=ui.repeats ÷ 10, label=String(opt_key)
 	)
 end
 
@@ -263,7 +285,7 @@ md"## Gradient Directions"
 begin
 	orthPlot = plot()
 	opt = SquaredExponentialGrad()
-	vals, grads, _ =  optimRF(opt, dim, steps)
+	vals, grads, _ =  optimRF(opt, ui.dim, ui.steps)
 	local grid = reshape(
 		[
 			dot(g1, g2)/(LinearAlgebra.norm(g2)^2)
@@ -333,15 +355,11 @@ md"# Appendix"
 # ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
-# ╠═102fe6f5-5177-4a7d-ae30-516ff851358c
-# ╠═5fc2a003-0f07-4c0b-91a2-9cf99a7af62b
-# ╠═424b60c3-ff83-420f-90f6-503e1b03bb34
+# ╟─b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
-# ╟─06669377-8c96-4b3b-83d1-855ef842f66f
 # ╟─0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
-# ╠═4e5278dd-3b2e-4728-8ad5-c5c3c435bd8e
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
 # ╟─c0df62ff-d312-45d6-a001-0ac9c1b4e34b
