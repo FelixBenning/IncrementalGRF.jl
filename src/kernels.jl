@@ -2,6 +2,7 @@ module Kernels
 
 using LinearAlgebra: LinearAlgebra
 using Zygote: Zygote, ForwardDiff
+using SpecialFunctions: besselk, gamma
 import ..StationaryKernel, ..IsotropicKernel, ..CovarianceKernel
 
 @inline function (k::StationaryKernel{T,N})(
@@ -114,10 +115,33 @@ struct SquaredExponential{T<:Number,N} <: IsotropicKernel{T,N}
     end
 end
 
+struct Matern{T<:Number, N} <: IsotropicKernel{T,N}
+    nu::Real
+    lengthScale::T
+    Matern{T,N}(nu::Real, lengthScale::T) where {T<:Number, N} = begin
+        lengthScale > 0 || throw(ArgumentError("lengthScale is not positive"))
+        nu > 0 || throw(ArgumentError("nu is not positive"))
+        new(nu, lengthScale)
+    end
+end
+
+@inline function sqNormEval(
+    k::Matern{T, N},
+    d::Union{T,ForwardDiff.Dual}
+) where {T,N}
+    if d > 0
+        x = sqrt(2*k.nu*d)/k.lengthScale
+        return 2^(1-k.nu)/gamma(k.nu) * x^k.nu * besselk(k.nu,x)
+    else
+        return 1 # variance
+    end
+    throw(ArgumentError("the squared Norm should never be negative!"))
+end
+
 @inline function sqNormEval(
     k::SquaredExponential{T,N},
     d::Union{T,ForwardDiff.Dual}
-) where {T,N,n}
+) where {T,N}
     return exp(-d / (2 * k.lengthScale^2))
 end
 

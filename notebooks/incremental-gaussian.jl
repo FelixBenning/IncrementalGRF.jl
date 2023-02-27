@@ -55,14 +55,29 @@ using RandomMatrices
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
 md"# Test 1-dim Gaussian Random Field"
 
+# ╔═╡ 707f9509-6106-4976-a405-58b0893e7251
+@bind nu Slider(0.5:1:8.5, default=3.5, show_value=true)
+
 # ╔═╡ 51be2a30-538d-4d10-bb69-53c0aac3d92f
-rf = GaussianRandomField(Kernels.SquaredExponential{Float64, 1}(1.))
+rf = GaussianRandomField(Kernels.Matern{Float64, 1}(nu,1.))
 
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
 x = -10:0.1:10
 
 # ╔═╡ a99bbd91-a5f1-4b21-bc63-90014d7b3914
 plot(x, vcat(rf.(x)...), show=true, label="")
+
+# ╔═╡ fa1f9f77-8d0b-4d58-adf5-bf9561778875
+# DifferentiableGRF(Kernels.Matern{Float64, 1}(1.,1.))
+
+# ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
+sqEx = DifferentiableGRF(Kernels.SquaredExponential{Float64, 1}(1.))
+
+# ╔═╡ 1df2638b-ca83-4a9c-8cfe-1cf76bd345a1
+plot(x, map(r->r.val, sqEx.([[elt] for elt in x])))
+
+# ╔═╡ 7ee4798f-3918-402b-a4ce-2dc66510ac49
+sqEx([0.])
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
 md"# Test 2-dim Gaussian Random Field"
@@ -339,9 +354,14 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
+# ╠═707f9509-6106-4976-a405-58b0893e7251
 # ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
 # ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
-# ╟─a99bbd91-a5f1-4b21-bc63-90014d7b3914
+# ╠═a99bbd91-a5f1-4b21-bc63-90014d7b3914
+# ╠═fa1f9f77-8d0b-4d58-adf5-bf9561778875
+# ╠═3e33bc57-b014-4618-ace5-1d14e9f313b1
+# ╠═1df2638b-ca83-4a9c-8cfe-1cf76bd345a1
+# ╠═7ee4798f-3918-402b-a4ce-2dc66510ac49
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
 # ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
