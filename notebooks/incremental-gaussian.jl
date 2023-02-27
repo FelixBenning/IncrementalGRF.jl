@@ -70,14 +70,23 @@ plot(x, vcat(rf.(x)...), show=true, label="")
 # ╔═╡ fa1f9f77-8d0b-4d58-adf5-bf9561778875
 # DifferentiableGRF(Kernels.Matern{Float64, 1}(1.,1.))
 
+# ╔═╡ 7abb752e-1ea4-476f-92d1-58ea2b02511b
+kernel = Kernels.SquaredExponential{Float64, 1}(1.)
+
+# ╔═╡ ab86acb1-892e-4fdb-ba9e-34715c110ee0
+taylorKernel = Kernels.TaylorCovariance{1}(kernel)
+
+# ╔═╡ 444c6cf5-fb78-4709-82ec-6f71b9c8bf5b
+taylorKernel([0.],[0.])
+
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
-sqEx = DifferentiableGRF(Kernels.SquaredExponential{Float64, 1}(1.))
-
-# ╔═╡ 1df2638b-ca83-4a9c-8cfe-1cf76bd345a1
-plot(x, map(r->r.val, sqEx.([[elt] for elt in x])))
-
-# ╔═╡ 7ee4798f-3918-402b-a4ce-2dc66510ac49
-sqEx([0.])
+begin
+	sqEx = DifferentiableGRF(kernel)
+	sqEx([0.])
+	cE = conditionalExpectation(sqEx)
+	pl = plot(x, map(r->r.val, cE.([[elt] for elt in x])))
+	plot!(pl, x, map(r->r.val, sqEx.([[elt] for elt in x])))
+end
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
 md"# Test 2-dim Gaussian Random Field"
@@ -359,9 +368,10 @@ md"# Appendix"
 # ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
 # ╠═a99bbd91-a5f1-4b21-bc63-90014d7b3914
 # ╠═fa1f9f77-8d0b-4d58-adf5-bf9561778875
+# ╠═7abb752e-1ea4-476f-92d1-58ea2b02511b
+# ╠═ab86acb1-892e-4fdb-ba9e-34715c110ee0
+# ╠═444c6cf5-fb78-4709-82ec-6f71b9c8bf5b
 # ╠═3e33bc57-b014-4618-ace5-1d14e9f313b1
-# ╠═1df2638b-ca83-4a9c-8cfe-1cf76bd345a1
-# ╠═7ee4798f-3918-402b-a4ce-2dc66510ac49
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
 # ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
