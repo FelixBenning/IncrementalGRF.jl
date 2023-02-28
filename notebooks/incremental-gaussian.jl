@@ -64,6 +64,9 @@ rf = GaussianRandomField(Kernels.Matern{Float64, 1}(nu,1.))
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
 x = -10:0.1:10
 
+# ╔═╡ 63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
+plot(x, Kernels.Matern{Float64,1}(nu,1.).([[elt] for elt in x]))
+
 # ╔═╡ a99bbd91-a5f1-4b21-bc63-90014d7b3914
 plot(x, vcat(rf.(x)...), show=true, label="")
 
@@ -184,7 +187,7 @@ begin
 		end
 		val, grad = rf(pos)
 		new_pos = pos - opt.scale * optimal_rate(val, grad) * grad
-		return new_pos, val, grad
+		return new_pos,val, grad
 	end
 	SquaredExponentialGrad
 end
@@ -217,7 +220,7 @@ begin
 			<p>
 				dimension: $(Child(:dim, PlutoUI.NumberField(1:300, default=30)))
 				Covariance-scale: $(
-					Child(:scale, PlutoUI.NumberField(0.01:0.01:10, default=0.1))
+					Child(:scale, PlutoUI.NumberField(0.01:0.01:10, default=0.05))
 				)
 			</p>
 			<h3>Optimization Parameters</h3>
@@ -365,6 +368,7 @@ md"# Appendix"
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
 # ╠═707f9509-6106-4976-a405-58b0893e7251
 # ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
+# ╠═63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
 # ╠═a99bbd91-a5f1-4b21-bc63-90014d7b3914
 # ╠═fa1f9f77-8d0b-4d58-adf5-bf9561778875
@@ -380,20 +384,20 @@ md"# Appendix"
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
 # ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
-# ╟─d329a235-fe41-4a03-a4b3-8a57c5898626
+# ╠═d329a235-fe41-4a03-a4b3-8a57c5898626
 # ╟─6769a366-071e-4b3a-99b7-3db5939fe537
-# ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
+# ╠═bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
-# ╟─b86794ca-a3ca-4947-adf3-6be9289e7465
+# ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
-# ╟─0402ec92-b8be-4e5f-8643-2d8382fc130e
+# ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
 # ╟─c0df62ff-d312-45d6-a001-0ac9c1b4e34b
-# ╟─11a92e07-aa82-4f04-adda-d7227858061e
+# ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╠═8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 # ╟─d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
