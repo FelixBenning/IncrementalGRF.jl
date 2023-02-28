@@ -115,10 +115,10 @@ struct SquaredExponential{T<:Number,N} <: IsotropicKernel{T,N}
     end
 end
 
-struct Matern{T<:Number, N} <: IsotropicKernel{T,N}
+struct Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
     nu::Real
     lengthScale::T
-    Matern{T,N}(nu::Real, lengthScale::T) where {T<:Number, N} = begin
+    Matern{T, Dim}(nu::Real, lengthScale::T) where {T<:Number, Dim} = begin
         lengthScale > 0 || throw(ArgumentError("lengthScale is not positive"))
         nu > 0 || throw(ArgumentError("nu is not positive"))
         new(nu, lengthScale)
@@ -145,7 +145,6 @@ end
     return exp(-d / (2 * k.lengthScale^2))
 end
 
-
 @inline function _taylor1(kernel::SquaredExponential{T,N}, d::AbstractVector{T}) where {T,N}
     dim = length(d)
     result = Matrix{T}(undef, dim + 1, dim + 1)
@@ -160,5 +159,30 @@ end
     )
     return result
 end
+
+
+# """ Broken: Need special treatment of case d=0 """
+@inline function _taylor1(kernel::Matern{T,N}, d::AbstractVector{T}) where {T,N}
+    if 0 == d
+        
+    end
+    result = Matrix{T}(undef, n + 1, n + 1)
+    eta = LinearAlgebra.norm(d)
+    x = sqrt(2*kernel.nu)*eta/kernel.lengthScale
+    factor = 2^(1-kernel.nu)/gamma(kernel.nu) * x^kernel.nu
+    grad_1dim = - factor * besselk(kernel.nu-1, x) / eta
+    result[1, 1] = factor * besselk(kernel.nu, x)
+    grad = grad_1dim * d
+    result[2:end, 1] = grad
+    result[1, 2:end] = -grad
+    hess_1dim = factor/eta^2 * (
+        2*kernel.nu/kernel.lengthScale^2 * besselk(kernel.nu-2, x)
+        + sqrt(2*kernel.nu)/kernel.lengthScale/eta
+    )
+    hess = hess_1dim * d * d' + grad_1dim * LinearAlgebra.I
+    result[2:end, 2:end] = -hess
+    return result
+end
+
 
 end # module
