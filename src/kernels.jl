@@ -163,26 +163,22 @@ end
     return result
 end
 
-
-# """ Broken: Need special treatment of case d=0 """
 @inline function _taylor1(kernel::Matern{T,Dim}, d::AbstractVector{T}) where {T,Dim}
+    result = Matrix{T}(undef, n + 1, n + 1)
     h = LinearAlgebra.norm(d)
 
-    result = Matrix{T}(undef, n + 1, n + 1)
-    eta = LinearAlgebra.norm(d)
-    x = sqrt(2*kernel.nu)*eta/kernel.lengthScale
-    factor = 2^(1-kernel.nu)/gamma(kernel.nu) * x^kernel.nu
-    grad_1dim = - factor * besselk(kernel.nu-1, x) / eta
-    result[1, 1] = factor * besselk(kernel.nu, x)
-    grad = grad_1dim * d
+    result[1,1] = matern(kernel.nu, kernel.lengthScale, 1, h)
+    rat = kernel.nu/(kernel.nu-1)
+    fd = -rat / kernel.lengthScale^2 * matern(kernel.nu-1, kernel.lengthScale, 1, sqrt(rat) * h) 
+    grad = fd * d
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
-    hess_1dim = factor/eta^2 * (
-        2*kernel.nu/kernel.lengthScale^2 * besselk(kernel.nu-2, x)
-        + sqrt(2*kernel.nu)/kernel.lengthScale/eta
-    )
-    hess = hess_1dim * d * d' + grad_1dim * LinearAlgebra.I
-    result[2:end, 2:end] = -hess
+
+    rat2 = kernel.nu/(kernel.nu-2)
+    dfd = rat * rat2 / kernel.lengthScale^2 * matern(kernel.nu-2, kernel.lengthScale, 1, sqrt(rat2) * h)
+    hess = (-fd) * LinearAlgebra.I + (-dfd) * d * d'
+    result[2:end, 2:end] = hess
+
     return result
 end
 
