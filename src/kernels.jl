@@ -139,8 +139,18 @@ end
     throw(ArgumentError("the distance should never be negative!"))
 end
 
+@inline function xbesselk(nu, arg)
+    if arg > 0
+        return 2^(1-nu)/gamma(nu) * arg^nu * besselk(nu, arg)
+    else
+        return 1
+    end
+    throw(ArgumentError("only positive arg expected"))
+end
+
 @inline function (k::Matern{T,Dim})(h::Union{T, ForwardDiff.Dual}) where {T, Dim}
-    return matern(k.nu, k.lengthScale, 1, h)
+    arg = sqrt(2*k.nu) * h / k.lengthScale
+    return xbesselk(k.nu, arg)
 end
 
 
@@ -164,18 +174,20 @@ end
 end
 
 @inline function _taylor1(kernel::Matern{T,Dim}, d::AbstractVector{T}) where {T,Dim}
-    result = Matrix{T}(undef, n + 1, n + 1)
-    h = LinearAlgebra.norm(d)
+    result = Matrix{T}(undef, Dim + 1, Dim + 1)
+    h = LinearAlgebra.norm(d) / kernel.lengthScale
 
-    result[1,1] = matern(kernel.nu, kernel.lengthScale, 1, h)
+    arg = sqrt(2*kernel.nu) * h
+
+    result[1,1] = xbesselk(kernel.nu, arg) 
     rat = kernel.nu/(kernel.nu-1)
-    fd = -rat / kernel.lengthScale^2 * matern(kernel.nu-1, kernel.lengthScale, 1, sqrt(rat) * h) 
+    fd = -rat / kernel.lengthScale^2 * xbesselk(kernel.nu -1, arg)
     grad = fd * d
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
     rat2 = kernel.nu/(kernel.nu-2)
-    dfd = rat * rat2 / kernel.lengthScale^2 * matern(kernel.nu-2, kernel.lengthScale, 1, sqrt(rat2) * h)
+    dfd = rat * rat2 / kernel.lengthScale^2 * xbesselk(kernel.nu -2, arg)
     hess = (-fd) * LinearAlgebra.I + (-dfd) * d * d'
     result[2:end, 2:end] = hess
 
