@@ -81,11 +81,11 @@ taylorKernel([0.],[0.])
 
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
 begin
-	sqEx = DifferentiableGRF(kernel)
+	sqEx = DifferentiableGRF(kernel, jitter=1e-10)
 	sqEx([0.])
 	cE = conditionalExpectation(sqEx)
-	pl = plot(x, map(r->r.val, cE.([[elt] for elt in x])))
-	plot!(pl, x, map(r->r.val, sqEx.([[elt] for elt in x])))
+	pl = plot(x, map(r->r.val, cE.([[elt] for elt in x])), label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]")
+	plot!(pl, x, map(r->r.val, sqEx.([[elt] for elt in x])), label=L"Z(x)")
 end
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
