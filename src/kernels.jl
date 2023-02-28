@@ -21,7 +21,7 @@ end
 ) where {T,N,n}
     @boundscheck length(d) == N || throw(ArgumentError(
         "The input is of size $(length(d)), but should be of size $N"))
-    return sqNormEval(k, LinearAlgebra.dot(d, d))
+    return k(LinearAlgebra.norm(d))
 end
 
 struct TaylorCovariance{Order,T,N,K<:CovarianceKernel{T,N}} <: CovarianceKernel{T,N}
@@ -91,7 +91,7 @@ end
 """
 @inline function _taylor1(kernel::IsotropicKernel{T,N}, d::AbstractVector{T}) where {T,N}
     result = Matrix{T}(undef, N + 1, N + 1)
-    val, grad_1dim = Zygote.withgradient(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
+    val, grad_1dim = Zygote.withgradient(x -> kernel(x), LinearAlgebra.norm(d))
 
     result[1, 1] = val
 
@@ -100,7 +100,7 @@ end
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
-    hess_1dim = Zygote.hessian(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
+    hess_1dim = Zygote.hessian(x -> kernel(x), LinearAlgebra.norm(d))
     hess = 4 * hess_1dim * d * d' + 2 * grad_1dim * LinearAlgebra.I
     result[2:end, 2:end] = -hess
     return result
@@ -125,30 +125,29 @@ struct Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
     end
 end
 
-@inline function sqNormEval(
-    k::Matern{T, N},
-    d::Union{T,ForwardDiff.Dual}
-) where {T,N}
-    if d > 0
-        x = sqrt(2*k.nu*d)/k.lengthScale
-        return 2^(1-k.nu)/gamma(k.nu) * x^k.nu * besselk(k.nu,x)
+@inline function matern(nu, scale, variance, distance)
+    if distance > 0 
+        arg = sqrt(2 * nu) * distance / scale
+        return variance * 2^(1-nu)/gamma(nu) * arg^nu * besselk(nu, arg)
     else
-        return 1 # variance
+        return variance 
     end
-    throw(ArgumentError("the squared Norm should never be negative!"))
+    throw(ArgumentError("the distance should never be negative!"))
 end
 
-@inline function sqNormEval(
-    k::SquaredExponential{T,N},
-    d::Union{T,ForwardDiff.Dual}
-) where {T,N}
-    return exp(-d / (2 * k.lengthScale^2))
+@inline function (k::Matern{T,N})(h::Union{T, ForwardDiff.Dual}) where {T, N}
+    return matern(k.nu, k.lengthScale, 1, h)
+end
+
+
+@inline function (k::SquaredExponential{T,N})(h::Union{T, ForwardDiff.Dual}) where {T,N}
+    return exp(-0.5 * (h / k.lengthScale)^2)
 end
 
 @inline function _taylor1(kernel::SquaredExponential{T,N}, d::AbstractVector{T}) where {T,N}
     dim = length(d)
     result = Matrix{T}(undef, dim + 1, dim + 1)
-    factor = sqNormEval(kernel, LinearAlgebra.dot(d, d))
+    factor = kernel(LinearAlgebra.norm(d))
     result[1, 1] = factor
     dl = d / (kernel.lengthScale^2)
     grad = factor * dl
@@ -163,9 +162,8 @@ end
 
 # """ Broken: Need special treatment of case d=0 """
 @inline function _taylor1(kernel::Matern{T,N}, d::AbstractVector{T}) where {T,N}
-    if 0 == d
-        
-    end
+    h = LinearAlgebra.norm(d)
+
     result = Matrix{T}(undef, n + 1, n + 1)
     eta = LinearAlgebra.norm(d)
     x = sqrt(2*kernel.nu)*eta/kernel.lengthScale
