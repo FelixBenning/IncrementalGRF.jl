@@ -31,12 +31,12 @@ end
 
 @testset "Kernels" begin
 	@testset "SquaredExponential" begin
-		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(-1.)
-		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(0.)
+		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(scale=-1.)
+		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(scale=0.)
 
 		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [1,3,50]
 			l = randn(type)^2
-			tk = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(l))
+			tk = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(scale=l))
 			x = randn(type, dim)
 			y = randn(type, dim)
 			d = x-y

@@ -111,34 +111,69 @@ end
 end
 
 struct SquaredExponential{T<:Number,Dim} <: IsotropicKernel{T,Dim}
-    lengthScale::T
-    SquaredExponential{T,Dim}(lengthScale) where {T<:Number,Dim} = begin
-        lengthScale > 0 ? new(lengthScale) : throw(
-            ArgumentError("lengthScale is not positive")
-        )
+    scale::T
+    variance::T
+    @doc raw"""
+
+        SquaredExponential{T,Dim}(
+            ; scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
+        ) where {T<:Number, Dim}
+    
+    Construct the Squared Exponential Kernel
+    ```math
+        C(h) = \sigma^2\exp(-\frac{h^2}{2s^2})
+    ```
+    where
+    - s = scale
+    - ``\sigma^2`` = variance / Dim   if scale_var_by_dim is true
+    - ``\sigma^2`` = variance         if scale_var_by_dim is false
+    """
+    SquaredExponential{T,Dim}(
+        ;scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
+    ) where {T<:Number, Dim} = begin
+        scale > 0 || throw(ArgumentError("scale is not positive"))
+        variance > 0 || throw(ArgumentError("variance is not positive"))
+        return new(scale, scale_var_by_dim ? variance/Dim : variance)
     end
 end
 
 struct Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
     nu::Real
-    lengthScale::T
-    Matern{T, Dim}(nu::Real, lengthScale::T) where {T<:Number, Dim} = begin
-        lengthScale > 0 || throw(ArgumentError("lengthScale is not positive"))
+    scale::T
+    variance::T
+    @doc raw"""
+
+        Matern{T, Dim}(
+            ; nu::Real, scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
+        ) where {T<:Number, Dim}
+
+    Construct the Matérn covariance Kernel
+    ```math
+        C_\nu(h) = \sigma^2 \frac{2^{1-\nu}}{\Gamma(\nu)}
+        \Bigl(\frac{\sqrt{2\nu}}{s} h \Bigr)^\nu
+        K_\nu\Bigl(\frac{\sqrt{2\nu}}{s}h\Bigr)
+    ```
+    where
+    - ``\nu`` = nu
+    - s = scale
+    - ``\sigma^2`` = variance / Dim   if `scale_var_by_dim` is true
+    - ``\sigma^2`` = variance         if `scale_var_by_dim` is false
+    """
+    Matern{T, Dim}(
+        ; nu::Real, scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
+    ) where {T<:Number, Dim} = begin
+        scale > 0 || throw(ArgumentError("scale is not positive"))
         nu > 0 || throw(ArgumentError("nu is not positive"))
-        new(nu, lengthScale)
+        variance > 0 || throw(ArgumentError("variance is not positive"))
+        return new(nu, scale, scale_var_by_dim ? variance/sqrt(Dim) : variance)
     end
 end
 
-@inline function matern(nu, scale, variance, distance)
-    if distance > 0 
-        arg = sqrt(2 * nu) * distance / scale
-        return variance * 2^(1-nu)/gamma(nu) * arg^nu * besselk(nu, arg)
-    else
-        return variance 
-    end
-    throw(ArgumentError("the distance should never be negative!"))
-end
 
+"""
+    Calculates ``arg^ν K_ν(arg)``, scaled such that it is 1 for arg=0.
+    Here K_ν is the modified bessel function.
+"""
 @inline function xbesselk(nu, arg)
     if arg > 0
         return 2^(1-nu)/gamma(nu) * arg^nu * besselk(nu, arg)
@@ -149,13 +184,13 @@ end
 end
 
 @inline function (k::Matern{T,Dim})(h::Union{T, ForwardDiff.Dual}) where {T, Dim}
-    arg = sqrt(2*k.nu) * h / k.lengthScale
-    return xbesselk(k.nu, arg)
+    arg = sqrt(2*k.nu) * h / k.scale
+    return variance * xbesselk(k.nu, arg)
 end
 
 
 @inline function (k::SquaredExponential{T,Dim})(h::Union{T, ForwardDiff.Dual}) where {T,Dim}
-    return exp(-0.5 * (h / k.lengthScale)^2)
+    return k.variance * exp(-0.5 * (h / k.scale)^2)
 end
 
 @inline function _taylor1(kernel::SquaredExponential{T,Dim}, d::AbstractVector{T}) where {T,Dim}
@@ -163,31 +198,31 @@ end
     result = Matrix{T}(undef, dim + 1, dim + 1)
     factor = kernel(LinearAlgebra.norm(d))
     result[1, 1] = factor
-    dl = d / (kernel.lengthScale^2)
+    dl = d / (kernel.scale^2)
     grad = factor * dl
     result[2:end, 1] = -grad
     result[1, 2:end] = grad
     result[2:end, 2:end] = (
-        factor * LinearAlgebra.I / kernel.lengthScale^2 - grad * transpose(dl)
+        factor * LinearAlgebra.I / kernel.scale^2 - grad * transpose(dl)
     )
     return result
 end
 
 @inline function _taylor1(kernel::Matern{T,Dim}, d::AbstractVector{T}) where {T,Dim}
     result = Matrix{T}(undef, Dim + 1, Dim + 1)
-    h = LinearAlgebra.norm(d) / kernel.lengthScale
+    h = LinearAlgebra.norm(d) / kernel.scale
 
     arg = sqrt(2*kernel.nu) * h
 
-    result[1,1] = xbesselk(kernel.nu, arg) 
+    result[1,1] = kernel.variance * xbesselk(kernel.nu, arg) 
     rat = kernel.nu/(kernel.nu-1)
-    fd = -rat / kernel.lengthScale^2 * xbesselk(kernel.nu -1, arg)
+    fd = - kernel.variance * rat / kernel.scale^2 * xbesselk(kernel.nu -1, arg)
     grad = fd * d
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
     rat2 = kernel.nu/(kernel.nu-2)
-    dfd = rat * rat2 / kernel.lengthScale^2 * xbesselk(kernel.nu -2, arg)
+    dfd = kernel.variance * rat * rat2 / kernel.scale^2 * xbesselk(kernel.nu -2, arg)
     hess = (-fd) * LinearAlgebra.I + (-dfd) * d * d'
     result[2:end, 2:end] = hess
 
