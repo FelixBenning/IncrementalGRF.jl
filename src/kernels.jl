@@ -185,7 +185,7 @@ end
 
 @inline function (k::Matern{T,Dim})(h::Union{T, ForwardDiff.Dual}) where {T, Dim}
     arg = sqrt(2*k.nu) * h / k.scale
-    return variance * xbesselk(k.nu, arg)
+    return k.variance * xbesselk(k.nu, arg)
 end
 
 

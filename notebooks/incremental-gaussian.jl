@@ -55,41 +55,46 @@ using RandomMatrices
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
 md"# Test 1-dim Gaussian Random Field"
 
-# ╔═╡ 707f9509-6106-4976-a405-58b0893e7251
-@bind nu Slider(0.5:1:8.5, default=3.5, show_value=true)
+# ╔═╡ cde271c5-f62a-44a5-aaca-b7ebcbec1788
+begin
+	local values = round.(tan.(range(start=atan(1.01),stop=π/2,length=100)), sigdigits=3)
+	values[57:end] = round.(values[57:end], sigdigits=2)
+    values[end] = Inf64
+	# plot(1:length(values), values)
+	@htl("""
+		<h3>Differentiability</h3>
+	    <p>The parameter ν in the Matern Kernel. For ν=∞ select the SquaredExponential Kernel</p>
+		$(@bind nu Slider(values, show_value=true))
+	""")
+end
+
+# ╔═╡ 7abb752e-1ea4-476f-92d1-58ea2b02511b
+kernel = nu < Inf ? Kernels.Matern{Float64, 1}(nu=nu) : Kernels.SquaredExponential{Float64, 1}()
 
 # ╔═╡ 51be2a30-538d-4d10-bb69-53c0aac3d92f
-rf = GaussianRandomField(Kernels.Matern{Float64, 1}(nu,1.))
+rf = GaussianRandomField(Kernels.Matern{Float64, 1}(nu=nu))
 
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
 x = -10:0.1:10
 
 # ╔═╡ 63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
-plot(x, Kernels.Matern{Float64,1}(nu,1.).([[elt] for elt in x]))
-
-# ╔═╡ a99bbd91-a5f1-4b21-bc63-90014d7b3914
-plot(x, vcat(rf.(x)...), show=true, label="")
-
-# ╔═╡ fa1f9f77-8d0b-4d58-adf5-bf9561778875
-# DifferentiableGRF(Kernels.Matern{Float64, 1}(1.,1.))
-
-# ╔═╡ 7abb752e-1ea4-476f-92d1-58ea2b02511b
-kernel = Kernels.SquaredExponential{Float64, 1}(1.)
-
-# ╔═╡ ab86acb1-892e-4fdb-ba9e-34715c110ee0
-taylorKernel = Kernels.TaylorCovariance{1}(kernel)
-
-# ╔═╡ 444c6cf5-fb78-4709-82ec-6f71b9c8bf5b
-taylorKernel([0.],[0.])
+plot(x, kernel.([[elt] for elt in x]), label="kernel")
 
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
-begin
-	sqEx = DifferentiableGRF(kernel, jitter=1e-10)
-	sqEx([0.])
-	cE = conditionalExpectation(sqEx)
-	pl = plot(x, map(r->r.val, cE.([[elt] for elt in x])), label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]")
-	plot!(pl, x, map(r->r.val, sqEx.([[elt] for elt in x])), label=L"Z(x)")
+function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
+	rf([0.])
+	cE = conditionalExpectation(rf)
+	pl = plot(
+		x, map(r->r.val, cE.([[elt] for elt in x])), 
+		label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]",
+		fontfamily="Computer Modern"
+	)
+	plot!(pl, x, map(r->r.val, rf.([[elt] for elt in x])), label=L"Z(x)")
+	return pl
 end
+
+# ╔═╡ a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
+plotExpectationAgainstPlot(DifferentiableGRF(kernel, jitter=1e-10))
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
 md"# Test 2-dim Gaussian Random Field"
@@ -100,7 +105,7 @@ pairs(x) = ( (a,b) for (k,a) in enumerate(x) for b in Iterators.drop(x, k) )
 # ╔═╡ 5e63220a-5bec-443b-b0a1-ebb20763ca1f
 begin
 	drf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,2}(1.), 
+		Kernels.SquaredExponential{Float64,2}(), 
 		jitter=0.00001
 	)
 
@@ -159,7 +164,7 @@ begin
 			y += (opt.step-1)/(opt.step+2) * opt.velocity
 		catch e
 			e isa UndefRefError || rethrow(e)
-			opt.scale = rf.grf.cov.k.lengthScale
+			opt.scale = rf.grf.cov.k.scale
 		end
 		val, grad = rf(y)
 		opt.step += 1
@@ -183,7 +188,7 @@ begin
 			opt.scale
 		catch e
 			e isa UndefRefError || rethrow(e)
-			opt.scale = rf.grf.cov.k.lengthScale
+			opt.scale = rf.grf.cov.k.scale
 		end
 		val, grad = rf(pos)
 		new_pos = pos - opt.scale * optimal_rate(val, grad) * grad
@@ -247,7 +252,7 @@ end
 # ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 function optimRF(opt, dim, steps)
 	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(ui.scale), 
+		Kernels.SquaredExponential{Float64,dim}(scale=ui.scale), 
 		jitter=0.000001
 	)
 
@@ -366,27 +371,24 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
-# ╠═707f9509-6106-4976-a405-58b0893e7251
-# ╠═51be2a30-538d-4d10-bb69-53c0aac3d92f
-# ╠═63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
-# ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
-# ╠═a99bbd91-a5f1-4b21-bc63-90014d7b3914
-# ╠═fa1f9f77-8d0b-4d58-adf5-bf9561778875
 # ╠═7abb752e-1ea4-476f-92d1-58ea2b02511b
-# ╠═ab86acb1-892e-4fdb-ba9e-34715c110ee0
-# ╠═444c6cf5-fb78-4709-82ec-6f71b9c8bf5b
-# ╠═3e33bc57-b014-4618-ace5-1d14e9f313b1
+# ╟─51be2a30-538d-4d10-bb69-53c0aac3d92f
+# ╟─cde271c5-f62a-44a5-aaca-b7ebcbec1788
+# ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
+# ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
+# ╠═a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
+# ╟─3e33bc57-b014-4618-ace5-1d14e9f313b1
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
 # ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
 # ╟─9dbbc977-7641-4a68-98bc-31d5e5847233
-# ╠═601ef169-392c-4c6b-857d-eb20139d4e81
+# ╟─601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
 # ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
 # ╠═d329a235-fe41-4a03-a4b3-8a57c5898626
 # ╟─6769a366-071e-4b3a-99b7-3db5939fe537
-# ╠═bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
+# ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
