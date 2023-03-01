@@ -5,6 +5,11 @@ using Zygote: Zygote, ForwardDiff
 using SpecialFunctions: besselk, gamma
 import ..StationaryKernel, ..IsotropicKernel, ..CovarianceKernel
 
+"""
+    function (k::StationaryKernel{T,Dim})(x::AbstractVector{T}, y::AbstractVector{T})
+
+    Calculate `k(x,y)` where `k` is a stationary covariance kernel.
+"""
 @inline function (k::StationaryKernel{T,Dim})(
     x::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}},
     y::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}}
@@ -115,18 +120,22 @@ struct SquaredExponential{T<:Number,Dim} <: IsotropicKernel{T,Dim}
     variance::T
     @doc raw"""
 
+        SquaredExponential{T,Dim} <: IsotropicKernel{T,Dim}
+        
         SquaredExponential{T,Dim}(
-            ; scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
-        ) where {T<:Number, Dim}
+            ;scale::T=one(T),
+            variance::T=one(T),
+            scale_var_by_dim::Bool=true
+        )
     
     Construct the Squared Exponential Kernel
     ```math
-        C(h) = \sigma^2\exp(-\frac{h^2}{2s^2})
+        C(h) = \sigma^2\exp\Bigl(-\frac{h^2}{2s^2}\Bigr)
     ```
     where
     - s = scale
-    - ``\sigma^2`` = variance / Dim   if scale_var_by_dim is true
-    - ``\sigma^2`` = variance         if scale_var_by_dim is false
+    - ``\sigma^2`` = (variance / Dim)   if `scale_var_by_dim` is true
+    - ``\sigma^2`` = variance         if `scale_var_by_dim` is false
     """
     SquaredExponential{T,Dim}(
         ;scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
@@ -143,9 +152,14 @@ struct Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
     variance::T
     @doc raw"""
 
+        Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
+
         Matern{T, Dim}(
-            ; nu::Real, scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
-        ) where {T<:Number, Dim}
+            ;nu::Real,
+            scale::T=one(T),
+            variance::T=one(T),
+            scale_var_by_dim::Bool=true
+        )
 
     Construct the Matérn covariance Kernel
     ```math
@@ -156,7 +170,7 @@ struct Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
     where
     - ``\nu`` = nu
     - s = scale
-    - ``\sigma^2`` = variance / Dim   if `scale_var_by_dim` is true
+    - ``\sigma^2`` = (variance / Dim)   if `scale_var_by_dim` is true
     - ``\sigma^2`` = variance         if `scale_var_by_dim` is false
     """
     Matern{T, Dim}(
