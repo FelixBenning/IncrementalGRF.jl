@@ -55,36 +55,13 @@ using RandomMatrices
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
 md"# Test 1-dim Gaussian Random Field"
 
-# ╔═╡ 4498205d-e0e6-452d-900b-ef6ca0de30cc
-function kernel_from_param(k_param::NamedTuple{(:dim, :nu, :scale, :sdv)})
-	return k_param.nu < Inf ? 
-		Kernels.Matern{Float64, k_param.dim}(
-			nu=k_param.nu, 
-			scale=k_param.scale, 
-			variance=k_param.sdv
-		) : Kernels.SquaredExponential{Float64, k_param.dim}(
-			scale=k_param.scale,
-			variance=k_param.sdv^2
-		)
-end
-
 # ╔═╡ cde271c5-f62a-44a5-aaca-b7ebcbec1788
-begin
-	function differentiabilitySlider()
-		values = round.(tan.(range(start=atan(1.01),stop=π/2,length=100)), sigdigits=3)
-		values[57:end] = round.(values[57:end], sigdigits=2)
-    	values[end] = Inf64
-		# plot(1:length(values), values)
-		return Slider(values, show_value=true)
-	end
-	@htl("""
-		<h3>Differentiability</h3>
-	    	<p>
-				The parameter ν in the Matern Kernel. 
-				For ν=∞ select the SquaredExponential Kernel
-			</p>
-		$(@bind nu differentiabilitySlider())
-	""")
+function differentiabilitySlider()
+	values = round.(tan.(range(start=atan(1.01),stop=π/2,length=100)), sigdigits=3)
+	values[57:end] = round.(values[57:end], sigdigits=2)
+    values[end] = Inf64
+	# plot(1:length(values), values)
+	return Slider(values, show_value=true)
 end
 
 # ╔═╡ 41f523c5-c3c9-4dc9-9185-4bf3c1285345
@@ -129,6 +106,19 @@ function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:1.3, dim=1:300)
 	end
 end
 
+# ╔═╡ 4498205d-e0e6-452d-900b-ef6ca0de30cc
+function kernel_from_param(k_param::NamedTuple{(:dim, :nu, :scale, :sdv)})
+	return k_param.nu < Inf ? 
+		Kernels.Matern{Float64, k_param.dim}(
+			nu=k_param.nu, 
+			scale=k_param.scale, 
+			variance=k_param.sdv^2
+		) : Kernels.SquaredExponential{Float64, k_param.dim}(
+			scale=k_param.scale,
+			variance=k_param.sdv^2
+		)
+end
+
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
 x = -10:0.1:10
 
@@ -142,10 +132,11 @@ kernel = kernel_from_param(k_param)
 rf = DifferentiableGRF(kernel)
 
 # ╔═╡ 63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
-plot(x, kernel.([[elt] for elt in x]), label="kernel")
+plot(x, kernel.([[elt] for elt in x]), label="covariance kernel", fontfamily="Computer Modern")
 
 # ╔═╡ 80c50c25-0af3-408e-9df1-2c5a99ecb059
- plot(x, vcat(GaussianRandomField(kernel,jitter=1e-10).(x)...))
+ plot(x, vcat(GaussianRandomField(kernel,jitter=1e-10).(x)...), 
+	 label=L"Z(x)", legend=:topright, fontfamily="Computer Modern")
 
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
 function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
@@ -154,6 +145,7 @@ function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
 	pl = plot(
 		x, map(r->r.val, cE.([[elt] for elt in x])), 
 		label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]",
+		legend=:topright,
 		fontfamily="Computer Modern"
 	)
 	plot!(pl, x, map(r->r.val, rf.([[elt] for elt in x])), label=L"Z(x)")
@@ -438,20 +430,20 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
-# ╟─7abb752e-1ea4-476f-92d1-58ea2b02511b
-# ╟─51be2a30-538d-4d10-bb69-53c0aac3d92f
 # ╟─41f523c5-c3c9-4dc9-9185-4bf3c1285345
-# ╟─4498205d-e0e6-452d-900b-ef6ca0de30cc
-# ╠═63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─cde271c5-f62a-44a5-aaca-b7ebcbec1788
+# ╟─4498205d-e0e6-452d-900b-ef6ca0de30cc
+# ╟─7abb752e-1ea4-476f-92d1-58ea2b02511b
 # ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
-# ╠═80c50c25-0af3-408e-9df1-2c5a99ecb059
-# ╠═8439b954-81b0-4e34-9e76-0cc4d290dd5b
-# ╠═a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
-# ╠═3e33bc57-b014-4618-ace5-1d14e9f313b1
+# ╟─51be2a30-538d-4d10-bb69-53c0aac3d92f
+# ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
+# ╟─80c50c25-0af3-408e-9df1-2c5a99ecb059
+# ╟─8439b954-81b0-4e34-9e76-0cc4d290dd5b
+# ╟─a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
+# ╟─3e33bc57-b014-4618-ace5-1d14e9f313b1
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
-# ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
+# ╠═5e63220a-5bec-443b-b0a1-ebb20763ca1f
 # ╟─9dbbc977-7641-4a68-98bc-31d5e5847233
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
