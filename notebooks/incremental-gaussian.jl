@@ -55,30 +55,97 @@ using RandomMatrices
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
 md"# Test 1-dim Gaussian Random Field"
 
+# ╔═╡ 4498205d-e0e6-452d-900b-ef6ca0de30cc
+function kernel_from_param(k_param::NamedTuple{(:dim, :nu, :scale, :sdv)})
+	return k_param.nu < Inf ? 
+		Kernels.Matern{Float64, k_param.dim}(
+			nu=k_param.nu, 
+			scale=k_param.scale, 
+			variance=k_param.sdv
+		) : Kernels.SquaredExponential{Float64, k_param.dim}(
+			scale=k_param.scale,
+			variance=k_param.sdv^2
+		)
+end
+
 # ╔═╡ cde271c5-f62a-44a5-aaca-b7ebcbec1788
 begin
-	local values = round.(tan.(range(start=atan(1.01),stop=π/2,length=100)), sigdigits=3)
-	values[57:end] = round.(values[57:end], sigdigits=2)
-    values[end] = Inf64
-	# plot(1:length(values), values)
+	function differentiabilitySlider()
+		values = round.(tan.(range(start=atan(1.01),stop=π/2,length=100)), sigdigits=3)
+		values[57:end] = round.(values[57:end], sigdigits=2)
+    	values[end] = Inf64
+		# plot(1:length(values), values)
+		return Slider(values, show_value=true)
+	end
 	@htl("""
 		<h3>Differentiability</h3>
-	    <p>The parameter ν in the Matern Kernel. For ν=∞ select the SquaredExponential Kernel</p>
-		$(@bind nu Slider(values, show_value=true))
+	    	<p>
+				The parameter ν in the Matern Kernel. 
+				For ν=∞ select the SquaredExponential Kernel
+			</p>
+		$(@bind nu differentiabilitySlider())
 	""")
 end
 
-# ╔═╡ 7abb752e-1ea4-476f-92d1-58ea2b02511b
-kernel = nu < Inf ? Kernels.Matern{Float64, 1}(nu=nu) : Kernels.SquaredExponential{Float64, 1}()
+# ╔═╡ 41f523c5-c3c9-4dc9-9185-4bf3c1285345
+function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:1.3, dim=1:300)
+	return PlutoUI.combine() do Child
+		@htl("""
+		<h3>Matern Random Field</h3>
+		<dl class="controls">
+			<div class="item">
+				<dt>Dimension</dt>
+				<dd>$(Child(:dim, Slider(dim, default=1, show_value=true)))</dd>
+			</div>
 
-# ╔═╡ 51be2a30-538d-4d10-bb69-53c0aac3d92f
-rf = GaussianRandomField(Kernels.Matern{Float64, 1}(nu=nu))
+			<div class="item">
+		    	<dt>Differentiability (ν)</dt>
+				<dd>$(Child(:nu, differentiabilitySlider()))</dd>
+			</div>
+		
+			<div class="item">
+		    	<dt>Scale</dt>
+				<dd>
+				$(Child(:scale, Slider(scale, default=1, show_value=true)))
+				</dd>
+			</div>
+
+			<div class="item">
+				<dt>Standard Deviation</dt>
+				<dd>
+				$(Child(:sdv, Slider(sdv, default=1, show_value=true)))
+				</dd>
+			</div>
+		</dl>
+		<style>
+              .controls {
+		 			display: grid;
+					grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))
+			  }
+			  .item {
+			  }
+		</style>
+		""")
+	end
+end
 
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
 x = -10:0.1:10
 
+# ╔═╡ 8439b954-81b0-4e34-9e76-0cc4d290dd5b
+@bind k_param maternParamPicker()
+
+# ╔═╡ 7abb752e-1ea4-476f-92d1-58ea2b02511b
+kernel = kernel_from_param(k_param)
+
+# ╔═╡ 51be2a30-538d-4d10-bb69-53c0aac3d92f
+rf = DifferentiableGRF(kernel)
+
 # ╔═╡ 63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 plot(x, kernel.([[elt] for elt in x]), label="kernel")
+
+# ╔═╡ 80c50c25-0af3-408e-9df1-2c5a99ecb059
+ plot(x, vcat(GaussianRandomField(kernel,jitter=1e-10).(x)...))
 
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
 function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
@@ -371,13 +438,17 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
-# ╠═7abb752e-1ea4-476f-92d1-58ea2b02511b
+# ╟─7abb752e-1ea4-476f-92d1-58ea2b02511b
 # ╟─51be2a30-538d-4d10-bb69-53c0aac3d92f
+# ╟─41f523c5-c3c9-4dc9-9185-4bf3c1285345
+# ╟─4498205d-e0e6-452d-900b-ef6ca0de30cc
+# ╠═63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─cde271c5-f62a-44a5-aaca-b7ebcbec1788
-# ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
+# ╠═80c50c25-0af3-408e-9df1-2c5a99ecb059
+# ╠═8439b954-81b0-4e34-9e76-0cc4d290dd5b
 # ╠═a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
-# ╟─3e33bc57-b014-4618-ace5-1d14e9f313b1
+# ╠═3e33bc57-b014-4618-ace5-1d14e9f313b1
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
 # ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
