@@ -12,7 +12,7 @@ include("benchmark_suite.jl")
 	@test A\b ≈ [1.,0]
 	@test A\[2.,2.] ≈ [2.0, -0.66666666666666]
 
-	for type in [Float32, Float64]
+	@testset "Random Test with type=$type" for type in [Float32, Float64]
 		for n in [50, 100, 1000]
 			M = randn(type,(n,n));
 			M = M' * M; # generate positive definite matrix (symmetric)
@@ -34,7 +34,7 @@ end
 		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(scale=-1.)
 		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(scale=0.)
 
-		@testset "TaylorCovariance" for type in [Float32, Float64], dim in [1,3,50]
+		@testset "TaylorCovariance (type=$type, dim=$dim)" for type in [Float32, Float64], dim in [1,3,50]
 			l = randn(type)^2
 			tk = Kernels.TaylorCovariance{1}(Kernels.SquaredExponential{type, dim}(scale=l))
 			x = randn(type, dim)
@@ -57,7 +57,7 @@ end
 				tk.k, x, y
 			)
 		end
-		@testset "Scaling" for dim in [1,3, 50]
+		@testset "Scaling with dim =$dim" for dim in [1,3, 50]
 			x = randn(Float64, dim)
 			scale = randn(Float64)^2
 			k = Kernels.SquaredExponential{Float64, dim}(scale=1.)
@@ -76,11 +76,11 @@ end
 	end
 
 	@testset "Matern" begin
-		@testset "Scaling" for dim in [1,3, 50]
+		@testset "Scaling with ν=$nu, dim=$dim" for nu in [1.1, 1.5, 2.,2.5], dim in [1,3, 50]
 			x = randn(Float64, dim)
 			scale = randn(Float64)^2
-			k = Kernels.Matern{Float64, dim}(nu=2., scale=1.)
-			scaled_k = Kernels.Matern{Float64, dim}(nu=2., scale=scale)
+			k = Kernels.Matern{Float64, dim}(nu=nu, scale=1.)
+			scaled_k = Kernels.Matern{Float64, dim}(nu=nu, scale=scale)
 			@test k(x) ≈ scaled_k(scale * x)
 
 			tay = Kernels.TaylorCovariance{1}(k)
