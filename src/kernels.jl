@@ -234,14 +234,14 @@ end
     arg = sqrt(2*kernel.nu) * h
 
     result[1,1] = kernel.variance * xbesselk(kernel.nu, arg) 
-    rat = kernel.nu/(kernel.nu-1)
-    fd = - kernel.variance * rat / kernel.scale^2 * xbesselk(kernel.nu -1, arg)
+    rat = kernel.nu/(kernel.nu-1) / kernel.scale^2
+    fd = - kernel.variance * rat * xbesselk(kernel.nu -1, arg)
     grad = fd * d
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
-    rat2 = kernel.nu/(kernel.nu-2)
-    dfd = kernel.variance * rat * rat2 / kernel.scale^2 * xbesselk(kernel.nu -2, arg)
+    rat2 = kernel.nu/(kernel.nu-2) / kernel.scale^2
+    dfd = kernel.variance * rat * rat2  * xbesselk(kernel.nu -2, arg)
     hess = (-fd) * LinearAlgebra.I + (-dfd) * d * d'
     result[2:end, 2:end] = hess
 
