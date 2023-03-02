@@ -25,8 +25,8 @@ end
     d::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}}
 ) where {T,Dim,n}
     @boundscheck length(d) == Dim || throw(ArgumentError(
-        "The input is of size $(length(d)), but should be of size $Dim"))
-    return k(LinearAlgebra.norm(d))
+        "The input is of size $(length(d)), but should be of size $N"))
+    return sqNormEval(k, LinearAlgebra.dot(d, d))
 end
 
 struct TaylorCovariance{Order,T,Dim,K<:CovarianceKernel{T,Dim}} <: CovarianceKernel{T,Dim}
@@ -100,7 +100,7 @@ end
 """
 @inline function _taylor1(kernel::IsotropicKernel{T,Dim}, d::AbstractVector{T}) where {T,Dim}
     result = Matrix{T}(undef, Dim + 1, Dim + 1)
-    val, grad_1dim = Zygote.withgradient(x -> kernel(x), LinearAlgebra.norm(d))
+    val, grad_1dim = Zygote.withgradient(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
 
     result[1, 1] = val
 
@@ -109,7 +109,7 @@ end
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
-    hess_1dim = Zygote.hessian(x -> kernel(x), LinearAlgebra.norm(d))
+    hess_1dim = Zygote.hessian(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
     hess = 4 * hess_1dim * d * d' + 2 * grad_1dim * LinearAlgebra.I
     result[2:end, 2:end] = -hess
     return result
@@ -197,20 +197,25 @@ end
     throw(ArgumentError("only positive arg expected"))
 end
 
-@inline function (k::Matern{T,Dim})(h::Union{T, ForwardDiff.Dual}) where {T, Dim}
-    arg = sqrt(2*k.nu) * h / k.scale
+@inline function sqNormEval(
+    k::Matern{T, Dim},
+    sqNorm::Union{T,ForwardDiff.Dual}
+) where {T,Dim}
+    arg = sqrt(2*k.nu * sqNorm)/k.scale
     return k.variance * xbesselk(k.nu, arg)
 end
 
-
-@inline function (k::SquaredExponential{T,Dim})(h::Union{T, ForwardDiff.Dual}) where {T,Dim}
-    return k.variance * exp(-0.5 * (h / k.scale)^2)
+@inline function sqNormEval(
+    k::SquaredExponential{T,Dim},
+    sqNorm::Union{T,ForwardDiff.Dual}
+) where {T,Dim}
+    return exp(-sqNorm / (2 * k.scale^2))
 end
 
 @inline function _taylor1(kernel::SquaredExponential{T,Dim}, d::AbstractVector{T}) where {T,Dim}
     dim = length(d)
     result = Matrix{T}(undef, dim + 1, dim + 1)
-    factor = kernel(LinearAlgebra.norm(d))
+    factor = sqNormEval(kernel, LinearAlgebra.dot(d, d))
     result[1, 1] = factor
     dl = d / (kernel.scale^2)
     grad = factor * dl
