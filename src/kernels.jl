@@ -25,7 +25,7 @@ end
     d::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}}
 ) where {T,Dim,n}
     @boundscheck length(d) == Dim || throw(ArgumentError(
-        "The input is of size $(length(d)), but should be of size $N"))
+        "The input is of size $(length(d)), but should be of size $Dim"))
     return sqNormEval(k, LinearAlgebra.dot(d, d))
 end
 
@@ -209,7 +209,7 @@ end
     k::SquaredExponential{T,Dim},
     sqNorm::Union{T,ForwardDiff.Dual}
 ) where {T,Dim}
-    return exp(-sqNorm / (2 * k.scale^2))
+    return k.variance * exp(-sqNorm / (2 * k.scale^2))
 end
 
 @inline function _taylor1(kernel::SquaredExponential{T,Dim}, d::AbstractVector{T}) where {T,Dim}
