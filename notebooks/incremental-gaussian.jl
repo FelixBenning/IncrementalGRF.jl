@@ -65,7 +65,7 @@ function differentiabilitySlider()
 end
 
 # ╔═╡ 41f523c5-c3c9-4dc9-9185-4bf3c1285345
-function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:1.3, dim=1:300)
+function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:2, dim=1:300)
 	return PlutoUI.combine() do Child
 		@htl("""
 		<h3>Matern Random Field</h3>
@@ -274,6 +274,21 @@ begin
 	DiminishingLRGD
 end
 
+# ╔═╡ b86794ca-a3ca-4947-adf3-6be9289e7465
+available_optimiser = Dict(
+	:RFI_GD=>SquaredExponentialGrad,
+	:RFI_Momentum=>SquaredExponentialMomentum,
+	:Adam=> Flux.Optimise.Adam,
+	:RMSProp => Flux.Optimise.RMSProp,
+	:AdaMax => Flux.Optimise.AdaMax,
+	:AdaGrad => Flux.Optimise.AdaGrad,
+	:AdaDelta => Flux.Optimise.AdaDelta,
+	:AMSGrad => Flux.Optimise.AMSGrad,
+	:NAdam => Flux.Optimise.NAdam,
+	:AdamW => Flux.Optimise.AdamW,
+	:RAdam => Flux.Optimise.RAdam
+)
+
 # ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
 begin
 	local optimiser = [:RFI_GD, :RFI_Momentum, :Adam]
@@ -299,7 +314,7 @@ begin
 			$(Child(
 				"active_optimiser",
 				PlutoUI.MultiCheckBox(
-					optimiser, orientation=:column,
+					available_optimiser |> keys |> collect,
 					default=optimiser
 				)
 			))
@@ -324,22 +339,10 @@ function optimRF(opt, dim, steps)
 	return vals, grads, rf
 end
 
-# ╔═╡ b86794ca-a3ca-4947-adf3-6be9289e7465
-begin
-	ui.dim # force a refresh on dimension change
-	available_optimiser = Dict(
-		:RFI_GD=>SquaredExponentialGrad(),
-		:RFI_Momentum=>SquaredExponentialMomentum(),
-		:Adam=> Flux.Optimise.Adam()
-	)
-end
-
 # ╔═╡ 0402ec92-b8be-4e5f-8643-2d8382fc130e
 begin
-	gradPlot = plot()
-	optimiser = filter(available_optimiser) do (key, _)
-		key in ui.active_optimiser
-	end
+	gradPlot = plot(legend=:topright, fontfamily="Computer Modern")
+	optimiser = Dict(x=>available_optimiser[x]() for x in ui.active_optimiser)
 	final_val_hists = Dict()
 	for (idx, (name, opt)) in enumerate(optimiser)
 		final_val_hists[name] = Vector(undef, ui.repeats)
@@ -430,7 +433,7 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
-# ╟─41f523c5-c3c9-4dc9-9185-4bf3c1285345
+# ╠═41f523c5-c3c9-4dc9-9185-4bf3c1285345
 # ╟─cde271c5-f62a-44a5-aaca-b7ebcbec1788
 # ╟─4498205d-e0e6-452d-900b-ef6ca0de30cc
 # ╟─7abb752e-1ea4-476f-92d1-58ea2b02511b
@@ -444,7 +447,7 @@ md"# Appendix"
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
 # ╠═5e63220a-5bec-443b-b0a1-ebb20763ca1f
-# ╟─9dbbc977-7641-4a68-98bc-31d5e5847233
+# ╠═9dbbc977-7641-4a68-98bc-31d5e5847233
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
@@ -454,9 +457,9 @@ md"# Appendix"
 # ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
-# ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
+# ╟─b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
-# ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
+# ╟─0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
