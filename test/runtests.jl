@@ -57,5 +57,40 @@ end
 				tk.k, x, y
 			)
 		end
+		@testset "Scaling" for dim in [1,3, 50]
+			x = randn(Float64, dim)
+			scale = randn(Float64)^2
+			k = Kernels.SquaredExponential{Float64, dim}(scale=1.)
+			scaled_k = Kernels.SquaredExponential{Float64, dim}(scale=scale)
+			@test k(x) ≈ scaled_k(scale * x)
+
+			tay = Kernels.TaylorCovariance{1}(k)
+			scaled_tay = Kernels.TaylorCovariance{1}(scaled_k)
+			C = tay(x)
+			C_scaled = scaled_tay(scale * x)
+			@test C[1,1] ≈ C_scaled[1,1]
+			@test C[2:end, 1] ≈ scale * C_scaled[2:end, 1]
+			@test C[1, 2:end] ≈ scale * C_scaled[1, 2:end]
+			@test C[2:end, 2:end] ≈ scale^2 * C_scaled[2:end, 2:end]
+		end
+	end
+
+	@testset "Matern" begin
+		@testset "Scaling" for dim in [1,3, 50]
+			x = randn(Float64, dim)
+			scale = randn(Float64)^2
+			k = Kernels.Matern{Float64, dim}(nu=2., scale=1.)
+			scaled_k = Kernels.Matern{Float64, dim}(nu=2., scale=scale)
+			@test k(x) ≈ scaled_k(scale * x)
+
+			tay = Kernels.TaylorCovariance{1}(k)
+			scaled_tay = Kernels.TaylorCovariance{1}(scaled_k)
+			C = tay(x)
+			C_scaled = scaled_tay(scale * x)
+			@test C[1,1] ≈ C_scaled[1,1]
+			@test C[2:end, 1] ≈ scale * C_scaled[2:end, 1]
+			@test C[1, 2:end] ≈ scale * C_scaled[1, 2:end]
+			@test C[2:end, 2:end] ≈ scale^2 * C_scaled[2:end, 2:end]
+		end
 	end
 end
