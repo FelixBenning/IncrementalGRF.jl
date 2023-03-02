@@ -76,7 +76,7 @@ end
 	end
 
 	@testset "Matern" begin
-		@testset "Scaling with ν=$nu, dim=$dim" for nu in [1.1, 1.5, 2.,2.5], dim in [1,3, 50]
+		@testset "Scaling with ν=$nu, dim=$dim" for nu in [1., 1.1, 1.5, 2.,2.5], dim in [1,3, 50]
 			x = randn(Float64, dim)
 			scale = randn(Float64)^2
 			k = Kernels.Matern{Float64, dim}(nu=nu, scale=1.)

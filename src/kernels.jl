@@ -185,14 +185,13 @@ end
 
 
 """
-    Calculates ``arg^ν K_ν(arg)``, scaled such that it is 1 for arg=0.
-    Here K_ν is the modified bessel function.
+    Calculates ``arg^ν K_ν(arg)``, where K_ν is the modified bessel function.
 """
 @inline function xbesselk(nu, arg)
     if arg > 0
-        return 2^(1-nu)/gamma(nu) * arg^nu * besselk(nu, arg)
+        return arg^nu * besselk(nu, arg)
     else
-        return 1
+        return gamma(nu)/2^(1-nu)
     end
     throw(ArgumentError("only positive arg expected"))
 end
@@ -201,8 +200,12 @@ end
     k::Matern{T, Dim},
     sqNorm::Union{T,ForwardDiff.Dual}
 ) where {T,Dim}
-    arg = sqrt(2*k.nu * sqNorm)/k.scale
-    return k.variance * xbesselk(k.nu, arg)
+    if sqNorm > 0 
+        arg = sqrt(2*k.nu * sqNorm)/k.scale
+        return k.variance * 2^(1-k.nu)/gamma(k.nu) * xbesselk(k.nu, arg)
+    else
+        return k.variance
+    end
 end
 
 @inline function sqNormEval(
@@ -233,15 +236,16 @@ end
 
     arg = sqrt(2*kernel.nu) * h
 
-    result[1,1] = kernel.variance * xbesselk(kernel.nu, arg) 
-    rat = kernel.nu/(kernel.nu-1) / kernel.scale^2
-    fd = - kernel.variance * rat * xbesselk(kernel.nu -1, arg)
+    factor = kernel.variance * 2^(1-kernel.nu)/gamma(kernel.nu)
+
+    result[1,1] = factor * xbesselk(kernel.nu, arg) 
+    rat = 2 * kernel.nu / kernel.scale^2
+    fd = - rat * factor * xbesselk(kernel.nu - 1, arg)
     grad = fd * d
     result[2:end, 1] = grad
     result[1, 2:end] = -grad
 
-    rat2 = kernel.nu/(kernel.nu-2) / kernel.scale^2
-    dfd = kernel.variance * rat * rat2  * xbesselk(kernel.nu -2, arg)
+    dfd = rat * rat * factor * xbesselk(kernel.nu -2, arg)
     hess = (-fd) * LinearAlgebra.I + (-dfd) * d * d'
     result[2:end, 2:end] = hess
 
