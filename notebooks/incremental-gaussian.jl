@@ -59,13 +59,14 @@ md"# Test 1-dim Gaussian Random Field"
 function differentiabilitySlider()
 	values = round.(tan.(range(start=atan(1.01),stop=π/2,length=100)), sigdigits=3)
 	values[57:end] = round.(values[57:end], sigdigits=2)
+	values=values[1:end-1]
     values[end] = Inf64
 	# plot(1:length(values), values)
 	return Slider(values, show_value=true)
 end
 
 # ╔═╡ 41f523c5-c3c9-4dc9-9185-4bf3c1285345
-function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:2, dim=1:300)
+function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:5, dim=1:300)
 	return PlutoUI.combine() do Child
 		@htl("""
 		<h3>Matern Random Field</h3>
@@ -123,7 +124,7 @@ end
 x = -10:0.1:10
 
 # ╔═╡ 8439b954-81b0-4e34-9e76-0cc4d290dd5b
-@bind k_param maternParamPicker()
+@bind k_param maternParamPicker(dim=1:2)
 
 # ╔═╡ 7abb752e-1ea4-476f-92d1-58ea2b02511b
 kernel = kernel_from_param(k_param)
@@ -140,15 +141,23 @@ plot(x, kernel.([[elt] for elt in x]), label="covariance kernel", fontfamily="Co
 
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
 function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
-	rf([0.])
+	val, grad = rf([0.])
 	cE = conditionalExpectation(rf)
-	pl = plot(
-		x, map(r->r.val, cE.([[elt] for elt in x])), 
-		label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]",
-		legend=:topright,
-		fontfamily="Computer Modern"
-	)
-	plot!(pl, x, map(r->r.val, rf.([[elt] for elt in x])), label=L"Z(x)")
+	
+	cE_evals = map(r->r.val, cE.([[elt] for elt in x]))
+	Z_evals = map(r->r.val, rf.([[elt] for elt in x]))
+	lims = (
+		min(minimum(Z_evals), minimum(cE_evals)), 
+		max(maximum(Z_evals), maximum(cE_evals))
+	) .* 1.2
+	
+	pl = plot(legend=:topright, fontfamily="Computer Modern", ylim=lims)
+
+	plot!(pl, x, Z_evals, label=L"Z(x)")
+	plot!(pl, x, cE_evals, label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]", linestyle=:dash)
+	plot!(pl, x, map(t-> val + t* first(grad), x), label="Taylor-1 in 0", linestyle=:dot)
+
+	plot!(pl, [0.], [val], seriestype=:scatter, color=1, label="", ms=1.5)
 	return pl
 end
 
@@ -433,7 +442,7 @@ md"# Appendix"
 # ╠═4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
 # ╠═42170044-fed1-4e1c-8254-93e33b21a0b7
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
-# ╠═41f523c5-c3c9-4dc9-9185-4bf3c1285345
+# ╟─41f523c5-c3c9-4dc9-9185-4bf3c1285345
 # ╟─cde271c5-f62a-44a5-aaca-b7ebcbec1788
 # ╟─4498205d-e0e6-452d-900b-ef6ca0de30cc
 # ╟─7abb752e-1ea4-476f-92d1-58ea2b02511b
@@ -442,11 +451,11 @@ md"# Appendix"
 # ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─80c50c25-0af3-408e-9df1-2c5a99ecb059
 # ╟─8439b954-81b0-4e34-9e76-0cc4d290dd5b
-# ╟─a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
+# ╠═a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
 # ╟─3e33bc57-b014-4618-ace5-1d14e9f313b1
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
-# ╠═5e63220a-5bec-443b-b0a1-ebb20763ca1f
+# ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
 # ╠═9dbbc977-7641-4a68-98bc-31d5e5847233
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
