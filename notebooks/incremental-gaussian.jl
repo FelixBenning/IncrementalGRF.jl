@@ -366,7 +366,7 @@ begin
 		final_val_hists[name] = Vector(undef, ui.repeats)
 		@progress for it in 1:ui.repeats # good GD
 			vals, _, _ =  optimRF(opt, ui.dim, ui.steps)
-			lstyle = ([:solid,:dash,:dashdot, :dashdotdot])[(idx-1) % 3+1]
+			lstyle = ([:solid,:dash,:dashdot, :dashdotdot])[(idx-1) % 4 + 1]
 			plot!(
 				gradPlot, vals, label=((it==1) ? String(name) : ""), 
 				color=idx, linestyle=lstyle, 
@@ -485,7 +485,7 @@ md"# Appendix"
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
-# ╟─0402ec92-b8be-4e5f-8643-2d8382fc130e
+# ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
