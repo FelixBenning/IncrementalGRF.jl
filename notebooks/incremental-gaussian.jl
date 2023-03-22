@@ -28,6 +28,7 @@ begin
 	Pkg.add("Distributions")
 	Pkg.add("RandomMatrices")
 	Pkg.add("HypertextLiteral")
+	Pkg.add("PGFPlots")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -35,7 +36,7 @@ begin
 	using LinearAlgebra: LinearAlgebra, dot, issuccess
 	using Test: @test
 	using Random: Random
-	using Plots: plot, plot!
+	using Plots: plot, plot!, savefig, Plots
 	using ProgressLogging: @progress
 	using Logging: Logging, SimpleLogger, with_logger
 	using PlutoUI: Slider, PlutoUI
@@ -121,7 +122,7 @@ function kernel_from_param(k_param::NamedTuple{(:dim, :nu, :scale, :sdv)})
 end
 
 # ╔═╡ 310164cc-ad23-4db0-bcfe-ccf487d721ea
-x = -10:0.1:10
+x = -10:0.02:10
 
 # ╔═╡ 8439b954-81b0-4e34-9e76-0cc4d290dd5b
 @bind k_param maternParamPicker(dim=1:2)
@@ -153,16 +154,24 @@ function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
 	
 	pl = plot(legend=:topright, fontfamily="Computer Modern", ylim=lims)
 
-	plot!(pl, x, Z_evals, label=L"Z(x)")
-	plot!(pl, x, cE_evals, label=L"\mathbb{E}[Z(x)\mid Z(0),\nabla Z(0)]", linestyle=:dash)
-	plot!(pl, x, map(t-> val + t* first(grad), x), label="Taylor-1 in 0", linestyle=:dot)
+	plot!(pl, x, Z_evals, label=L"\mathcal{L}(x)")
+	plot!(pl, x, cE_evals, 
+		label=L"\mathbb{E}[\mathcal{L}(x)\mid \mathcal{L}(0),\nabla \mathcal{L}(0)]", linestyle=:dash)
+	plot!(pl, x, map(t-> val + t* first(grad), x), 
+		label=L"T[\mathcal{L}(x)\mid \mathcal{L}(0), \nabla\mathcal{L}(0)]",
+		linestyle=:dot)
 
 	plot!(pl, [0.], [val], seriestype=:scatter, color=1, label="", ms=1.5)
+	plot!(pl, size=(400,300))
 	return pl
 end
 
 # ╔═╡ a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
-plotExpectationAgainstPlot(DifferentiableGRF(kernel, jitter=1e-10))
+begin
+	cond_plot = plotExpectationAgainstPlot(DifferentiableGRF(kernel, jitter=1e-10))
+	savefig("plots/scale=$(kernel.scale),std=$(sqrt(kernel.variance)),nu=$(k_param.nu).svg")
+	cond_plot
+end
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
 md"# Test 2-dim Gaussian Random Field"
@@ -357,7 +366,12 @@ begin
 		final_val_hists[name] = Vector(undef, ui.repeats)
 		@progress for it in 1:ui.repeats # good GD
 			vals, _, _ =  optimRF(opt, ui.dim, ui.steps)
-			plot!(gradPlot, vals, label=((it==1) ? String(name) : ""), color=idx)
+			lstyle = ([:solid,:dash,:dashdot, :dashdotdot])[(idx-1) % 3+1]
+			plot!(
+				gradPlot, vals, label=((it==1) ? String(name) : ""), 
+				color=idx, linestyle=lstyle, 
+				lw=lstyle == :solid ? 0.9 : 1.1
+			)
 			final_val_hists[name][it] = vals[end]
 		end
 	end
@@ -399,17 +413,20 @@ begin
 	plot!(
 		orthPlot, grid, seriestype=:heatmap,
 		title=latexstring(
-			"Projection \$ π_{g^T}(g)=\\langle g,g^T\\rangle/\\|g^T\\|^2\$"
+			"Projection \$ π_{g}(\\tilde{g}\\,)=\\langle \\tilde{g}, g\\, \\rangle/\\|g\\, \\|^2\$"
 		),
-		ylabel=latexstring("gradient \$g\$"), 
-		xlabel=latexstring("projection target gradient (\$g^T\$)"),
+		ylabel=latexstring("gradient \$\\tilde{g}\$"), 
+		xlabel=latexstring("gradient \$g\$"),
 		fontfamily="Computer Modern"
 	)
 	plot(vals, label=nothing)
 end
 
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
-orthPlot
+plot!(orthPlot, size=(400,400))
+
+# ╔═╡ 2bc50209-34d0-442c-91d3-9243749849a7
+savefig(orthPlot, "plots/projections.svg")
 
 # ╔═╡ 8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 plot(map(LinearAlgebra.norm, eachcol(grads)))
@@ -444,9 +461,9 @@ md"# Appendix"
 # ╟─a5ab4c31-4a85-484b-984e-0b72311368f3
 # ╟─41f523c5-c3c9-4dc9-9185-4bf3c1285345
 # ╟─cde271c5-f62a-44a5-aaca-b7ebcbec1788
-# ╟─4498205d-e0e6-452d-900b-ef6ca0de30cc
+# ╠═4498205d-e0e6-452d-900b-ef6ca0de30cc
 # ╟─7abb752e-1ea4-476f-92d1-58ea2b02511b
-# ╟─310164cc-ad23-4db0-bcfe-ccf487d721ea
+# ╠═310164cc-ad23-4db0-bcfe-ccf487d721ea
 # ╟─51be2a30-538d-4d10-bb69-53c0aac3d92f
 # ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─80c50c25-0af3-408e-9df1-2c5a99ecb059
@@ -466,7 +483,7 @@ md"# Appendix"
 # ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
-# ╟─b86794ca-a3ca-4947-adf3-6be9289e7465
+# ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
 # ╟─0402ec92-b8be-4e5f-8643-2d8382fc130e
 # ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
@@ -476,6 +493,7 @@ md"# Appendix"
 # ╟─c0df62ff-d312-45d6-a001-0ac9c1b4e34b
 # ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
+# ╠═2bc50209-34d0-442c-91d3-9243749849a7
 # ╠═8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 # ╟─d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
 # ╠═506140dd-5b00-4475-b367-f101260aa637
