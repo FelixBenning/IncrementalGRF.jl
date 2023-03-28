@@ -21,6 +21,7 @@ begin
 	Pkg.develop(path="..")
 	Pkg.add("LinearAlgebra")
 	Pkg.add("Plots")
+	Pkg.add("Mongoc")
 	Pkg.add("ProgressLogging")
 	Pkg.add("PlutoUI")
 	Pkg.add("LaTeXStrings")
@@ -46,6 +47,13 @@ end
 
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
 using IncrementalGRF
+
+# ╔═╡ 9af5239a-7090-4f40-9ac4-96c9760a5d35
+begin
+	using Mongoc: Mongoc
+	using Dates: Dates
+	using ProgressLogging: ProgressLogging as PL
+end
 
 # ╔═╡ 08a40e67-33ac-424c-806c-e775e90b4bd7
 using Flux: Flux
@@ -207,6 +215,69 @@ plot!(plt, [0], [0], quiver=(drf([0.,0])[:gradient]), seriestype=:quiver)
 # ╔═╡ 601ef169-392c-4c6b-857d-eb20139d4e81
 md"# Optimization on Random Fields"
 
+# ╔═╡ 8850bf86-9da2-4f20-8ec0-8fa338eb8b16
+begin
+	client = Mongoc.Client("localhost", 27017)
+	database = client["optimizer-benchmarking"]
+	collection = database["recorded-optim-runs"]
+	Mongoc.ping(client)
+end
+
+# ╔═╡ 5159700c-05da-490c-b14f-62e5cf5b09f0
+function mongoOptimRF(opt; dim, scale, steps)
+	document = Mongoc.BSON()
+	document["scale"] = scale
+	document["dim"] = dim
+	document["steps"] = steps
+	document["optimiser"] = repr(opt)
+	document["git-hash"] = readchomp(`git rev-parse HEAD`)
+	document["date"] = string(Dates.now())
+
+	document["random-field"] = "SquaredExponential" 
+	rf = DifferentiableGRF(
+		Kernels.SquaredExponential{Float64,dim}(scale=scale), 
+		jitter=0.000001
+	)
+
+	local pos = zeros(dim)
+	vals = Vector{Float64}(undef, steps)
+	grads = Vector{Vector{Float64}}(undef, steps)
+
+	PL.progress(name="Optimization on Random Field") do id
+		for step in 1:steps
+			@info "$(step)/$(steps) steps" progress=(step/steps)^3 _id=id
+			pos, vals[step], grads[step] = opt(rf, pos)
+		end
+	end
+	document["values"] = vals
+	document["gradients"] = grads
+	push!(collection, document)
+end
+
+# ╔═╡ 5ff78030-c6fa-4a50-be97-32c518f2418a
+function dbfilter(
+	collection=collection;
+	optimiser=nothing, 
+	dim=nothing,
+	min_steps=nothing,
+	scale=nothing
+)
+	filter = Mongoc.BSON()
+	if !isnothing(optimiser)
+		filter["optimiser"] = repr(optimiser)
+	end
+	if !isnothing(dim)
+		filter["dim"] = dim
+	end
+	if !isnothing(scale)
+		filter["scale"] = scale
+	end
+	if !isnothing(min_steps)
+		filter["steps"] = Dict(raw"$gte" => min_steps)
+	end
+	Mongoc.find(collection, filter)
+end
+
 # ╔═╡ 2f621535-e1f5-44fc-b64e-de2512e439b4
 function (opt::Flux.Optimise.AbstractOptimiser)(rf::DifferentiableGRF, pos)
 	pos_copy = copy(pos)
@@ -324,7 +395,6 @@ begin
 			<p>
 				steps: $(Child(:steps, PlutoUI.NumberField(1:60, default=25)))
 				repeats: $(Child(:repeats, PlutoUI.NumberField(1:1000, default=10)))
-
 			</p>
 			
 			<h3>Optimizers</h3>
@@ -341,59 +411,44 @@ begin
 	)
 end
 
-# ╔═╡ a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
-function optimRF(opt, dim, steps)
-	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(scale=ui.scale), 
-		jitter=0.000001
-	)
-
-	local pos = zeros(dim)
-	vals = Vector{Float64}(undef, steps)
-	grads = Matrix{Float64}(undef, dim, steps)
-	for step in 1:steps
-		pos, vals[step], grads[:,step] = opt(rf, pos)
-	end
-	return vals, grads, rf
-end
-
-# ╔═╡ 0402ec92-b8be-4e5f-8643-2d8382fc130e
+# ╔═╡ 62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 begin
 	gradPlot = plot(legend=:topright, fontfamily="Computer Modern")
-	optimiser = Dict(x=>available_optimiser[x]() for x in ui.active_optimiser)
-	final_val_hists = Dict()
+	optimiser = Dict(x=>available_optimiser[x] for x in ui.active_optimiser)
 	for (idx, (name, opt)) in enumerate(optimiser)
-		final_val_hists[name] = Vector(undef, ui.repeats)
-		@progress for it in 1:ui.repeats # good GD
-			vals, _, _ =  optimRF(opt, ui.dim, ui.steps)
+		simulations = dbfilter(
+			optimiser=opt(), 
+			dim=ui.dim, 
+			min_steps=ui.steps,
+			scale=ui.scale
+		) |> collect
+		@progress for _ in 1:(ui.repeats-length(simulations))
+			# fill database
+			println("filling database")
+			mongoOptimRF(
+				opt(), dim=ui.dim, scale=ui.scale, steps=ui.steps
+			)
+		end
+		for (it, sim) in enumerate(simulations)
 			lstyle = ([:solid,:dash,:dashdot, :dashdotdot])[(idx-1) % 4 + 1]
 			plot!(
-				gradPlot, vals, label=((it==1) ? String(name) : ""), 
-				color=idx, linestyle=lstyle, 
+				gradPlot, 
+				sim["values"][1:ui.steps], 
+				label=((it==1) ? String(name) : ""), 
+				color=idx, 
+				linestyle=lstyle, 
 				lw=lstyle == :solid ? 0.9 : 1.1
 			)
-			final_val_hists[name][it] = vals[end]
 		end
 	end
 	gradPlot
 end
-
-# ╔═╡ 33ada8c8-8b00-4759-b29e-b0e8d6957e3e
-final_val_hists
 
 # ╔═╡ 1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 md"## End of Iteration Value Distribution"
 
 # ╔═╡ edb84732-fbca-4248-b47e-4c5459df2674
 @bind opt_key PlutoUI.Select([x=> String(x) for x in ui.active_optimiser])
-
-# ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
-begin
-	plot(
-		final_val_hists[opt_key], 
-		seriestype=:histogram, normalize=:pdf, bins=ui.repeats ÷ 10, label=String(opt_key)
-	)
-end
 
 # ╔═╡ c0df62ff-d312-45d6-a001-0ac9c1b4e34b
 md"## Gradient Directions"
@@ -402,13 +457,14 @@ md"## Gradient Directions"
 begin
 	orthPlot = plot()
 	opt = SquaredExponentialGrad()
-	vals, grads, _ =  optimRF(opt, ui.dim, ui.steps)
+	simulation = first(dbfilter(optimiser=opt, dim=30, min_steps=25))
+	vals, grads = simulation["values"], simulation["gradients"]
 	local grid = reshape(
 		[
 			dot(g1, g2)/(LinearAlgebra.norm(g2)^2)
-			for g1 in eachcol(grads) for g2 in eachcol(grads)
+			for g1 in grads for g2 in grads
 		], 
-		size(grads, 2), :
+		length(grads), :
 	)
 	plot!(
 		orthPlot, grid, seriestype=:heatmap,
@@ -420,6 +476,18 @@ begin
 		fontfamily="Computer Modern"
 	)
 	plot(vals, label=nothing)
+end
+
+# ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
+begin
+	final_vals = [
+		sim["values"][ui.steps] 
+		for sim in dbfilter(optimiser=opt, dim=ui.dim, min_steps=ui.steps)
+	]
+	plot(
+		final_vals, 
+		seriestype=:histogram, normalize=:pdf, bins=length(final_vals) ÷ 10, label=String(opt_key)
+	)
 end
 
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
@@ -468,25 +536,27 @@ md"# Appendix"
 # ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─80c50c25-0af3-408e-9df1-2c5a99ecb059
 # ╟─8439b954-81b0-4e34-9e76-0cc4d290dd5b
-# ╠═a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
+# ╟─a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
 # ╟─3e33bc57-b014-4618-ace5-1d14e9f313b1
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
 # ╟─5e63220a-5bec-443b-b0a1-ebb20763ca1f
 # ╠═9dbbc977-7641-4a68-98bc-31d5e5847233
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
+# ╠═9af5239a-7090-4f40-9ac4-96c9760a5d35
+# ╟─8850bf86-9da2-4f20-8ec0-8fa338eb8b16
+# ╟─5159700c-05da-490c-b14f-62e5cf5b09f0
+# ╟─5ff78030-c6fa-4a50-be97-32c518f2418a
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
 # ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
-# ╠═d329a235-fe41-4a03-a4b3-8a57c5898626
+# ╟─d329a235-fe41-4a03-a4b3-8a57c5898626
 # ╟─6769a366-071e-4b3a-99b7-3db5939fe537
 # ╟─bd7cae19-a3cd-42e6-8d4f-2ad3a86bb03b
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
-# ╠═a1ca1744-5c57-4014-9085-1ecc0f1dd9ac
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
-# ╠═0402ec92-b8be-4e5f-8643-2d8382fc130e
-# ╠═33ada8c8-8b00-4759-b29e-b0e8d6957e3e
+# ╟─62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
