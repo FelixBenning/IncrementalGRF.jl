@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.24
 
 using Markdown
 using InteractiveUtils
@@ -278,6 +278,22 @@ function dbfilter(
 	Mongoc.find(collection, filter)
 end
 
+# ╔═╡ 86c6e77e-9301-46ac-bf22-7d5dc78db3d9
+# https://github.com/fonsp/Pluto.jl/issues/115#issuecomment-661722426
+function ingredients(path::String)
+	# this is from the Julia source code (evalfile in base/loading.jl)
+	# but with the modification that it returns the module instead of the last object
+	name = Symbol(basename(path))
+	m = Module(name)
+	Core.eval(m,
+        Expr(:toplevel,
+             :(eval(x) = $(Expr(:core, :eval))($name, x)),
+             :(include(x) = $(Expr(:top, :include))($name, x)),
+             :(include(mapexpr::Function, x) = $(Expr(:top, :include))(mapexpr, $name, x)),
+             :(include($path))))
+	m
+end
+
 # ╔═╡ 2f621535-e1f5-44fc-b64e-de2512e439b4
 function (opt::Flux.Optimise.AbstractOptimiser)(rf::DifferentiableGRF, pos)
 	pos_copy = copy(pos)
@@ -380,7 +396,7 @@ available_optimiser = Dict(
 
 # ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
 begin
-	local optimiser = [:RFI_GD, :RFI_Momentum, :Adam]
+	local default_opt = [:RFI_GD, :RFI_Momentum, :Adam]
 	@bind ui PlutoUI.confirm(
 		PlutoUI.combine() do Child
 			@htl("""
@@ -403,7 +419,7 @@ begin
 				"active_optimiser",
 				PlutoUI.MultiCheckBox(
 					available_optimiser |> keys |> collect,
-					default=optimiser
+					default=default_opt
 				)
 			))
 			""")
@@ -423,7 +439,7 @@ begin
 	optimiser = Dict(x=>available_optimiser[x] for x in ui.active_optimiser)
 	for (idx, (name, opt)) in enumerate(optimiser)
 		simulations = dbfilter(
-			optimiser=opt(), 
+			optimiser=opt(),
 			dim=ui.dim, 
 			min_steps=ui.steps,
 			scale=ui.scale
@@ -470,13 +486,25 @@ md"## End of Iteration Value Distribution"
 # ╔═╡ edb84732-fbca-4248-b47e-4c5459df2674
 @bind opt_key PlutoUI.Select([x=> String(x) for x in ui.active_optimiser])
 
+# ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
+begin
+	final_vals = [
+		sim["values"][ui.steps] 
+		for sim in dbfilter(optimiser=opt, dim=ui.dim, min_steps=ui.steps)
+	]
+	plot(
+		final_vals, 
+		seriestype=:histogram, normalize=:pdf, bins=length(final_vals) ÷ 10, label=String(opt_key)
+	)
+end
+
 # ╔═╡ c0df62ff-d312-45d6-a001-0ac9c1b4e34b
 md"## Gradient Directions"
 
 # ╔═╡ 11a92e07-aa82-4f04-adda-d7227858061e
 begin
 	orthPlot = plot()
-	opt = SquaredExponentialGrad()
+	local opt = SquaredExponentialGrad()
 	simulation = first(dbfilter(optimiser=opt, dim=30, min_steps=25))
 	vals, grads = simulation["values"], simulation["gradients"]
 	local grid = reshape(
@@ -496,18 +524,6 @@ begin
 		fontfamily="Computer Modern"
 	)
 	plot(vals, label=nothing)
-end
-
-# ╔═╡ e6114d6d-87f4-41cc-a6f8-c314a024a15f
-begin
-	final_vals = [
-		sim["values"][ui.steps] 
-		for sim in dbfilter(optimiser=opt, dim=ui.dim, min_steps=ui.steps)
-	]
-	plot(
-		final_vals, 
-		seriestype=:histogram, normalize=:pdf, bins=length(final_vals) ÷ 10, label=String(opt_key)
-	)
 end
 
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
@@ -567,6 +583,7 @@ md"# Appendix"
 # ╟─8850bf86-9da2-4f20-8ec0-8fa338eb8b16
 # ╟─5159700c-05da-490c-b14f-62e5cf5b09f0
 # ╟─5ff78030-c6fa-4a50-be97-32c518f2418a
+# ╟─86c6e77e-9301-46ac-bf22-7d5dc78db3d9
 # ╠═08a40e67-33ac-424c-806c-e775e90b4bd7
 # ╠═2f621535-e1f5-44fc-b64e-de2512e439b4
 # ╠═f4bb022d-3857-4378-bd9c-08c39f12132f
@@ -577,7 +594,7 @@ md"# Appendix"
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
 # ╠═e39e11e5-2bcd-446c-9e66-b417eafdadef
-# ╟─62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
+# ╠═62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 # ╠═9c17b8a7-1baa-451b-adb3-d4f82d531144
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
