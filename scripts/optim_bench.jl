@@ -4,7 +4,7 @@ include("optim_benchmarking.jl")
 
 function connect(;
 	user = "felixbenning",
-	password=ENV["mongoDB-password"]
+	password=ENV["mongoDBpassword"]
 )
 	# https://github.com/felipenoris/Mongoc.jl/issues/69#issuecomment-946953526
 	suffix = "tlsCAFile=$(pkgdir(IncrementalGRF, "scripts/cert.pem"))"
