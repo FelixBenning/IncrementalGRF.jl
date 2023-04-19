@@ -2,14 +2,26 @@
 include("optimiser.jl")
 include("optim_benchmarking.jl")
 
-client = Mongoc.Client("localhost", 27017)
+function connect(;
+	user = "felixbenning",
+	password=ENV["mongoDB-password"]
+)
+	# https://github.com/felipenoris/Mongoc.jl/issues/69#issuecomment-946953526
+	suffix = "tlsCAFile=$(pkgdir(IncrementalGRF, "scripts/cert.pem"))"
+	cluster = "rf-simulations.lqksh0j.mongodb.net"
+	uri = "mongodb+srv://$user:$password@$cluster/?$(suffix)"
+	return Mongoc.Client(uri)
+end
+
+client = connect()
 
 database = client["optimizer-benchmarking"]
 collection = database["recorded-optim-runs"]
 
+Mongoc.ping(client)
 
 doc = Mongoc.find_one(collection)
 # Mongoc.delete_many(collection, Mongoc.BSON())
 
 
-mongoOptimRF(SquaredExponentialGrad(), dim=1000, scale=0.05, steps=30)
+mongoOptimRF(SquaredExponentialGrad(), dim=100, scale=0.05, steps=30)
