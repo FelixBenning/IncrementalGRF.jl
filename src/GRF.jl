@@ -2,7 +2,7 @@ using LinearAlgebra: LinearAlgebra, issuccess
 using ElasticArrays: ElasticMatrix
 using Random: AbstractRNG, default_rng
 
-struct GaussianRandomField{T<:Number, N}
+struct GaussianRandomFunction{T<:Number, N}
 	rng::AbstractRNG
 	cov::CovarianceKernel{T, N}
 	jitter::T
@@ -12,13 +12,13 @@ struct GaussianRandomField{T<:Number, N}
 	chol_cov::PackedLowerTriangular{T}
 end
 
-function GaussianRandomField(
+function GaussianRandomFunction(
 	rng::AbstractRNG,
 	cov::CovarianceKernel{T,N};
 	jitter=10*eps(T)
 ) where {T<:Number,N}
 	outdim = size(cov(zeros(T, N), zeros(T, N)), 1)
-	GaussianRandomField{T,N}(
+	GaussianRandomFunction{T,N}(
 		rng, cov, jitter, outdim,
 		#=randomness=# ElasticMatrix{T}(Matrix{T}(undef, (outdim, 0))), 
 		#=evaluated_points=# ElasticMatrix{T}(Matrix{T}(undef, (N, 0))),
@@ -26,11 +26,11 @@ function GaussianRandomField(
 	)
 end
 
-function GaussianRandomField(cov::CovarianceKernel{T,N}; jitter=10*eps(T)) where {T,N}
-	GaussianRandomField(default_rng(), cov, jitter=jitter)
+function GaussianRandomFunction(cov::CovarianceKernel{T,N}; jitter=10*eps(T)) where {T,N}
+	GaussianRandomFunction(default_rng(), cov, jitter=jitter)
 end
 
-function covariance(grf::GaussianRandomField{T, N}, x) where {T,N}
+function covariance(grf::GaussianRandomFunction{T, N}, x) where {T,N}
 	mixed_cov = Matrix{T}(
 		undef, size(grf.evaluated_points,2)*grf.outdim, grf.outdim
 	)
@@ -44,9 +44,9 @@ function covariance(grf::GaussianRandomField{T, N}, x) where {T,N}
 end
 
 """
-evaluate random field at point x
+evaluate random function at point x
 """
-function (grf::GaussianRandomField{T, N})(x::AbstractVector{T}) where {T<:Number, N}
+function (grf::GaussianRandomFunction{T, N})(x::AbstractVector{T}) where {T<:Number, N}
 	coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
 
 	cond_expectation = reshape(reshape(grf.randomness, 1, :) * coeff, :)
@@ -72,13 +72,13 @@ function (grf::GaussianRandomField{T, N})(x::AbstractVector{T}) where {T<:Number
 	return cond_expectation + cond_var_cholesky.L * new_randomness
 end
 
-function conditionalExpectation(grf::GaussianRandomField{T,N}) where {T,N}
+function conditionalExpectation(grf::GaussianRandomFunction{T,N}) where {T,N}
 	return x::AbstractVector{T} -> begin
 		coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
 		return reshape(reshape(grf.randomness, 1, :) * coeff, :)
 	end
 end
 
-function (grf::GaussianRandomField{T, 1})(x::T) where T
+function (grf::GaussianRandomFunction{T, 1})(x::T) where T
 	return grf([x])
 end

@@ -2,7 +2,7 @@ using LinearAlgebra: LinearAlgebra
 using BenchmarkTools: BenchmarkTools as B, BenchmarkGroup
 
 function oneDimGaussian(n)
-	grf = GaussianRandomField(Kernels.SquaredExponential{Float64,1}(1.))
+	grf = GaussianRandomFunction(Kernels.SquaredExponential{Float64,1}(1.))
 	grf.(range(-50, stop=50, length=n))
 end
 

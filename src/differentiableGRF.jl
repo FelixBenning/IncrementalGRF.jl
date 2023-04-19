@@ -1,11 +1,11 @@
 
 struct DifferentiableGRF{Order,T<:Number,N}
-    grf::GaussianRandomField{T,N}
+    grf::GaussianRandomFunction{T,N}
 end
 
 function DifferentiableGRF{Order}(cov::CovarianceKernel{T,N}; jitter=10 * eps(T)) where {Order, T<:Number,N}
     return DifferentiableGRF{Order,T,N}(
-        GaussianRandomField(
+        GaussianRandomFunction(
             Kernels.TaylorCovariance{Order}(cov),
             jitter=jitter
         )

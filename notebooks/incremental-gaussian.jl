@@ -62,7 +62,7 @@ using Flux: Flux
 using RandomMatrices
 
 # ╔═╡ a5ab4c31-4a85-484b-984e-0b72311368f3
-md"# Test 1-dim Gaussian Random Field"
+md"# Test 1-dim Gaussian Random Function"
 
 # ╔═╡ cde271c5-f62a-44a5-aaca-b7ebcbec1788
 function differentiabilitySlider()
@@ -78,7 +78,7 @@ end
 function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:5, dim=1:300)
 	return PlutoUI.combine() do Child
 		@htl("""
-		<h3>Matern Random Field</h3>
+		<h3>Matern Random Function</h3>
 		<dl class="controls">
 			<div class="item">
 				<dt>Dimension</dt>
@@ -145,7 +145,7 @@ rf = DifferentiableGRF(kernel)
 plot(x, kernel.([[elt] for elt in x]), label="covariance kernel", fontfamily="Computer Modern")
 
 # ╔═╡ 80c50c25-0af3-408e-9df1-2c5a99ecb059
- plot(x, vcat(GaussianRandomField(kernel,jitter=1e-10).(x)...), 
+ plot(x, vcat(GaussianRandomFunction(kernel,jitter=1e-10).(x)...), 
 	 label=L"Z(x)", legend=:topright, fontfamily="Computer Modern")
 
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
@@ -182,7 +182,7 @@ begin
 end
 
 # ╔═╡ 702178e1-d0b6-4b0e-bf47-3a31acb34b77
-md"# Test 2-dim Gaussian Random Field"
+md"# Test 2-dim Gaussian Random Function"
 
 # ╔═╡ d85c6f84-91a1-4b90-a19a-c981ed331d5c
 pairs(x) = ( (a,b) for (k,a) in enumerate(x) for b in Iterators.drop(x, k) )
@@ -213,7 +213,7 @@ end
 plot!(plt, [0], [0], quiver=(drf([0.,0])[:gradient]), seriestype=:quiver)
 
 # ╔═╡ 601ef169-392c-4c6b-857d-eb20139d4e81
-md"# Optimization on Random Fields"
+md"# Optimization on Random Function"
 
 # ╔═╡ 8850bf86-9da2-4f20-8ec0-8fa338eb8b16
 begin
@@ -233,7 +233,7 @@ function mongoOptimRF(opt; dim, scale, steps)
 	document["git-hash"] = readchomp(`git rev-parse HEAD`)
 	document["date"] = string(Dates.now())
 
-	document["random-field"] = "SquaredExponential" 
+	document["covariance-function"] = "SquaredExponential" 
 	rf = DifferentiableGRF(
 		Kernels.SquaredExponential{Float64,dim}(scale=scale), 
 		jitter=0.000001
@@ -243,7 +243,7 @@ function mongoOptimRF(opt; dim, scale, steps)
 	vals = Vector{Float64}(undef, steps)
 	grads = Vector{Vector{Float64}}(undef, steps)
 
-	PL.progress(name="Optimization on Random Field") do id
+	PL.progress(name="Optimization on Random Function") do id
 		for step in 1:steps
 			@info "$(step)/$(steps) steps" progress=(step/steps)^3 _id=id
 			pos, vals[step], grads[step] = opt(rf, pos)
@@ -384,7 +384,7 @@ begin
 	@bind ui PlutoUI.confirm(
 		PlutoUI.combine() do Child
 			@htl("""
-			<h3>Random Field Parameters</h3>
+			<h3>Random Function Parameters</h3>
 			<p>
 				dimension: $(Child(:dim, PlutoUI.NumberField(1:300, default=30)))
 				Covariance-scale: $(
@@ -411,9 +411,15 @@ begin
 	)
 end
 
+# ╔═╡ e39e11e5-2bcd-446c-9e66-b417eafdadef
+shift = 1.8
+
 # ╔═╡ 62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 begin
-	gradPlot = plot(legend=:topright, fontfamily="Computer Modern")
+	gradPlot = plot(
+		legend=:bottomleft, fontfamily="Computer Modern",
+		yaxis=:log, xaxis=:log
+	)
 	optimiser = Dict(x=>available_optimiser[x] for x in ui.active_optimiser)
 	for (idx, (name, opt)) in enumerate(optimiser)
 		simulations = dbfilter(
@@ -433,7 +439,7 @@ begin
 			lstyle = ([:solid,:dash,:dashdot, :dashdotdot])[(idx-1) % 4 + 1]
 			plot!(
 				gradPlot, 
-				sim["values"][1:ui.steps], 
+				sim["values"][1:ui.steps] .+ shift, 
 				label=((it==1) ? String(name) : ""), 
 				color=idx, 
 				linestyle=lstyle, 
@@ -442,6 +448,20 @@ begin
 		end
 	end
 	gradPlot
+end
+
+# ╔═╡ 9c17b8a7-1baa-451b-adb3-d4f82d531144
+begin
+	plot!(
+		gradPlot, 
+		1:ui.steps, shift ./ sqrt.(1:ui.steps), 
+		linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{\sqrt{n}}"
+	)
+	plot!(
+		gradPlot, 
+		1:ui.steps, shift ./ (1:ui.steps), 
+		linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{n}"
+	)
 end
 
 # ╔═╡ 1ad684c6-129c-449b-9eea-3a8c9dd0ac96
@@ -556,7 +576,9 @@ md"# Appendix"
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
+# ╠═e39e11e5-2bcd-446c-9e66-b417eafdadef
 # ╟─62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
+# ╠═9c17b8a7-1baa-451b-adb3-d4f82d531144
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
