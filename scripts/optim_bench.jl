@@ -7,7 +7,8 @@ function connect(;
 	password=ENV["mongoDBpassword"]
 )
 	# https://github.com/felipenoris/Mongoc.jl/issues/69#issuecomment-946953526
-	suffix = "tlsCAFile=$(pkgdir(IncrementalGRF, "scripts/cert.pem"))"
+	# Need julia version 1.7: suffix = "tlsCAFile=$(pkgdir(IncrementalGRF, "scripts/cert.pem"))"
+	suffix = "tlsCAFile=$(joinpath(dirname(pathof(IncrementalGRF)), "..", "scripts/cert.pem"))"
 	cluster = "rf-simulations.lqksh0j.mongodb.net"
 	uri = "mongodb+srv://$user:$password@$cluster/?$(suffix)"
 	return Mongoc.Client(uri)
