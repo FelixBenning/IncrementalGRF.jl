@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.24
+# v0.19.25
 
 using Markdown
 using InteractiveUtils
@@ -215,67 +215,28 @@ plot!(plt, [0], [0], quiver=(drf([0.,0])[:gradient]), seriestype=:quiver)
 # ╔═╡ 601ef169-392c-4c6b-857d-eb20139d4e81
 md"# Optimization on Random Function"
 
+# ╔═╡ 76da78ed-c48e-45d6-bdd4-f7c2668fdab7
+function connect(;
+	user = "felixbenning",
+	password=ENV["mongoDBpassword"]
+)
+	# https://github.com/felipenoris/Mongoc.jl/issues/69#issuecomment-946953526
+	# Need julia version 1.7: suffix = "tlsCAFile=$(pkgdir(IncrementalGRF, "scripts/cert.pem"))"
+	suffix = "tlsCAFile=$(joinpath(dirname(pathof(IncrementalGRF)), "..", "scripts/cert.pem"))"
+	cluster = "rf-simulations.lqksh0j.mongodb.net"
+	uri = "mongodb+srv://$user:$password@$cluster/?$(suffix)"
+	return Mongoc.Client(uri)
+end
+
+# ╔═╡ c28573ad-d698-4258-9b51-cd87d4a9a84b
+md"MongoDB password: $(@bind pwd PlutoUI.PasswordField())"
+
 # ╔═╡ 8850bf86-9da2-4f20-8ec0-8fa338eb8b16
 begin
-	client = Mongoc.Client("localhost", 27017)
+	client = connect(password=pwd)
 	database = client["optimizer-benchmarking"]
 	collection = database["recorded-optim-runs"]
 	Mongoc.ping(client)
-end
-
-# ╔═╡ 5159700c-05da-490c-b14f-62e5cf5b09f0
-function mongoOptimRF(opt; dim, scale, steps)
-	document = Mongoc.BSON()
-	document["scale"] = scale
-	document["dim"] = dim
-	document["steps"] = steps
-	document["optimiser"] = repr(opt)
-	document["git-hash"] = readchomp(`git rev-parse HEAD`)
-	document["date"] = string(Dates.now())
-
-	document["covariance-function"] = "SquaredExponential" 
-	rf = DifferentiableGRF(
-		Kernels.SquaredExponential{Float64,dim}(scale=scale), 
-		jitter=0.000001
-	)
-
-	local pos = zeros(dim)
-	vals = Vector{Float64}(undef, steps)
-	grads = Vector{Vector{Float64}}(undef, steps)
-
-	PL.progress(name="Optimization on Random Function") do id
-		for step in 1:steps
-			@info "$(step)/$(steps) steps" progress=(step/steps)^3 _id=id
-			pos, vals[step], grads[step] = opt(rf, pos)
-		end
-	end
-	document["values"] = vals
-	document["gradients"] = grads
-	push!(collection, document)
-end
-
-# ╔═╡ 5ff78030-c6fa-4a50-be97-32c518f2418a
-function dbfilter(
-	collection=collection;
-	optimiser=nothing, 
-	dim=nothing,
-	min_steps=nothing,
-	scale=nothing
-)
-	filter = Mongoc.BSON()
-	if !isnothing(optimiser)
-		filter["optimiser"] = repr(optimiser)
-	end
-	if !isnothing(dim)
-		filter["dim"] = dim
-	end
-	if !isnothing(scale)
-		filter["scale"] = scale
-	end
-	if !isnothing(min_steps)
-		filter["steps"] = Dict(raw"$gte" => min_steps)
-	end
-	Mongoc.find(collection, filter)
 end
 
 # ╔═╡ 86c6e77e-9301-46ac-bf22-7d5dc78db3d9
@@ -337,6 +298,16 @@ begin
 		return new_pos, val, grad
 
 	end
+
+	function Base.repr(s::SquaredExponentialMomentum)
+		try
+			return "SquaredExponentialMomentum($(s.step), $(s.scale), $(s.velocity))"
+		catch e
+			if (e isa UndefRefError)
+				return "SquaredExponentialMomentum(1, #undef, #undef)"
+			end
+		end
+	end
 	SquaredExponentialMomentum
 end
 
@@ -358,7 +329,71 @@ begin
 		new_pos = pos - opt.scale * optimal_rate(val, grad) * grad
 		return new_pos,val, grad
 	end
+	function Base.repr(s::SquaredExponentialGrad)
+		try
+			return "SquaredExponentialGrad($(s.scale))"
+		catch e
+			if (e isa UndefRefError)
+				return "SquaredExponentialGrad(#undef)"
+			end
+		end
+	end
 	SquaredExponentialGrad
+end
+
+# ╔═╡ 5159700c-05da-490c-b14f-62e5cf5b09f0
+function mongoOptimRF(opt; dim, scale, steps)
+	document = Mongoc.BSON()
+	document["scale"] = scale
+	document["dim"] = dim
+	document["steps"] = steps
+	document["optimiser"] = repr(opt)
+	document["git-hash"] = readchomp(`git rev-parse HEAD`)
+	document["date"] = string(Dates.now())
+
+	document["covariance-function"] = "SquaredExponential" 
+	rf = DifferentiableGRF(
+		Kernels.SquaredExponential{Float64,dim}(scale=scale), 
+		jitter=0.000001
+	)
+
+	local pos = zeros(dim)
+	vals = Vector{Float64}(undef, steps)
+	grads = Vector{Vector{Float64}}(undef, steps)
+
+	PL.progress(name="Optimization on Random Function") do id
+		for step in 1:steps
+			@info "$(step)/$(steps) steps" progress=(step/steps)^3 _id=id
+			pos, vals[step], grads[step] = opt(rf, pos)
+		end
+	end
+	document["values"] = vals
+	document["gradients"] = grads
+	push!(collection, document)
+end
+
+# ╔═╡ 5ff78030-c6fa-4a50-be97-32c518f2418a
+function dbfilter(
+	collection=collection;
+	optimiser=nothing, 
+	dim=nothing,
+	min_steps=nothing,
+	scale=nothing
+)
+	filter = Mongoc.BSON()
+	if !isnothing(optimiser)
+		filter["optimiser"] = repr(optimiser)
+	end
+	if !isnothing(dim)
+		filter["dim"] = dim
+	end
+	if !isnothing(scale)
+		filter["scale"] = scale
+	end
+	if !isnothing(min_steps)
+		filter["steps"] = Dict(raw"$gte" => min_steps)
+	end
+	Mongoc.find(collection, filter)
 end
 
 # ╔═╡ 368cc59b-0650-49bd-92b8-a8ab8ff20df6
@@ -381,8 +416,8 @@ end
 
 # ╔═╡ b86794ca-a3ca-4947-adf3-6be9289e7465
 available_optimiser = Dict(
-	:RFI_GD=>SquaredExponentialGrad,
-	:RFI_Momentum=>SquaredExponentialMomentum,
+	:RFD=>SquaredExponentialGrad,
+	:RFM=>SquaredExponentialMomentum,
 	:Adam=> Flux.Optimise.Adam,
 	:RMSProp => Flux.Optimise.RMSProp,
 	:AdaMax => Flux.Optimise.AdaMax,
@@ -396,7 +431,7 @@ available_optimiser = Dict(
 
 # ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
 begin
-	local default_opt = [:RFI_GD, :RFI_Momentum, :Adam]
+	local default_opt = [:RFD, :RFM, :Adam]
 	@bind ui PlutoUI.confirm(
 		PlutoUI.combine() do Child
 			@htl("""
@@ -428,13 +463,13 @@ begin
 end
 
 # ╔═╡ e39e11e5-2bcd-446c-9e66-b417eafdadef
-shift = 1.8
+shift = 2
 
 # ╔═╡ 62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 begin
 	gradPlot = plot(
 		legend=:bottomleft, fontfamily="Computer Modern",
-		yaxis=:log, xaxis=:log
+		# yaxis=:log, xaxis=:log
 	)
 	optimiser = Dict(x=>available_optimiser[x] for x in ui.active_optimiser)
 	for (idx, (name, opt)) in enumerate(optimiser)
@@ -471,13 +506,14 @@ begin
 	plot!(
 		gradPlot, 
 		1:ui.steps, shift ./ sqrt.(1:ui.steps), 
-		linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{\sqrt{n}}"
+		linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{\sqrt{n}}",
+		linecolor=:black
 	)
-	plot!(
-		gradPlot, 
-		1:ui.steps, shift ./ (1:ui.steps), 
-		linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{n}"
-	)
+	# plot!(
+	# 	gradPlot, 
+	# 	1:ui.steps, shift ./ (1:ui.steps), 
+	# 	linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{n}"
+	# )
 end
 
 # ╔═╡ 1ad684c6-129c-449b-9eea-3a8c9dd0ac96
@@ -490,7 +526,10 @@ md"## End of Iteration Value Distribution"
 begin
 	final_vals = [
 		sim["values"][ui.steps] 
-		for sim in dbfilter(optimiser=opt, dim=ui.dim, min_steps=ui.steps)
+		for sim in dbfilter(
+			optimiser=available_optimiser[opt_key](), 
+			dim=ui.dim, min_steps=ui.steps
+		)
 	]
 	plot(
 		final_vals, 
@@ -505,7 +544,7 @@ md"## Gradient Directions"
 begin
 	orthPlot = plot()
 	local opt = SquaredExponentialGrad()
-	simulation = first(dbfilter(optimiser=opt, dim=30, min_steps=25))
+	simulation = first(dbfilter(optimiser=opt, dim=1000, min_steps=25))
 	vals, grads = simulation["values"], simulation["gradients"]
 	local grid = reshape(
 		[
@@ -533,7 +572,7 @@ plot!(orthPlot, size=(400,400))
 savefig(orthPlot, "plots/projections.svg")
 
 # ╔═╡ 8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
-plot(map(LinearAlgebra.norm, eachcol(grads)))
+plot(map(LinearAlgebra.norm, grads))
 
 # ╔═╡ d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
 md"# Minima Distribution"
@@ -580,6 +619,8 @@ md"# Appendix"
 # ╠═9dbbc977-7641-4a68-98bc-31d5e5847233
 # ╟─601ef169-392c-4c6b-857d-eb20139d4e81
 # ╠═9af5239a-7090-4f40-9ac4-96c9760a5d35
+# ╟─76da78ed-c48e-45d6-bdd4-f7c2668fdab7
+# ╟─c28573ad-d698-4258-9b51-cd87d4a9a84b
 # ╟─8850bf86-9da2-4f20-8ec0-8fa338eb8b16
 # ╟─5159700c-05da-490c-b14f-62e5cf5b09f0
 # ╟─5ff78030-c6fa-4a50-be97-32c518f2418a
@@ -595,15 +636,15 @@ md"# Appendix"
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
 # ╠═e39e11e5-2bcd-446c-9e66-b417eafdadef
 # ╠═62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
-# ╠═9c17b8a7-1baa-451b-adb3-d4f82d531144
+# ╟─9c17b8a7-1baa-451b-adb3-d4f82d531144
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
 # ╟─c0df62ff-d312-45d6-a001-0ac9c1b4e34b
-# ╠═11a92e07-aa82-4f04-adda-d7227858061e
+# ╟─11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
 # ╠═2bc50209-34d0-442c-91d3-9243749849a7
-# ╠═8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
+# ╟─8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 # ╟─d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
 # ╠═506140dd-5b00-4475-b367-f101260aa637
 # ╠═94188b20-75fc-4fa1-b5a0-121881e1b59a
