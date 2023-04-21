@@ -417,7 +417,7 @@ end
 # ╔═╡ b86794ca-a3ca-4947-adf3-6be9289e7465
 available_optimiser = Dict(
 	:RFD=>SquaredExponentialGrad,
-	:RFM=>SquaredExponentialMomentum,
+	:"RFM*"=>SquaredExponentialMomentum,
 	:Adam=> Flux.Optimise.Adam,
 	:RMSProp => Flux.Optimise.RMSProp,
 	:AdaMax => Flux.Optimise.AdaMax,
@@ -464,6 +464,9 @@ end
 
 # ╔═╡ e39e11e5-2bcd-446c-9e66-b417eafdadef
 shift = 2
+
+# ╔═╡ 80bc99b5-677e-4073-a617-a863a6a2c4ce
+
 
 # ╔═╡ 62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 begin
@@ -635,7 +638,8 @@ md"# Appendix"
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
 # ╠═e39e11e5-2bcd-446c-9e66-b417eafdadef
-# ╠═62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
+# ╠═80bc99b5-677e-4073-a617-a863a6a2c4ce
+# ╟─62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 # ╟─9c17b8a7-1baa-451b-adb3-d4f82d531144
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
