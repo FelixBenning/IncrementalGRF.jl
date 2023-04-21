@@ -30,6 +30,7 @@ begin
 	Pkg.add("RandomMatrices")
 	Pkg.add("HypertextLiteral")
 	Pkg.add("PGFPlots")
+	Pkg.add("Measures")
 end
 
 # ╔═╡ 4d5ceb64-18e2-40b6-b6ab-9a7befbe27b2
@@ -43,6 +44,7 @@ begin
 	using PlutoUI: Slider, PlutoUI
 	using HypertextLiteral: @htl, HypertextLiteral
 	using LaTeXStrings
+	using Measures
 end
 
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
@@ -170,7 +172,7 @@ function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
 		linestyle=:dot)
 
 	plot!(pl, [0.], [val], seriestype=:scatter, color=1, label="", ms=1.5)
-	plot!(pl, size=(400,300))
+	plot!(pl, size=(300,300))
 	return pl
 end
 
@@ -431,7 +433,7 @@ available_optimiser = Dict(
 
 # ╔═╡ 42fede2d-da64-4517-8db7-6fbb9a76741e
 begin
-	local default_opt = [:RFD, :RFM, :Adam]
+	local default_opt = [:RFD, :"RFM*", :Adam, :NAdam]
 	@bind ui PlutoUI.confirm(
 		PlutoUI.combine() do Child
 			@htl("""
@@ -462,17 +464,17 @@ begin
 	)
 end
 
-# ╔═╡ e39e11e5-2bcd-446c-9e66-b417eafdadef
-shift = 2
-
 # ╔═╡ 80bc99b5-677e-4073-a617-a863a6a2c4ce
-
+md"
+- LogLog: $(@bind loglog PlutoUI.CheckBox(default=false)) 
+- plot sqrt: $(@bind sqrtplot PlutoUI.CheckBox(default=false)) 
+- shift up by: $(@bind shift Slider(0:0.1:2, default=0,show_value=true))"
 
 # ╔═╡ 62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
 begin
 	gradPlot = plot(
-		legend=:bottomleft, fontfamily="Computer Modern",
-		# yaxis=:log, xaxis=:log
+		legend=:topright, fontfamily="Computer Modern",
+		size=(300,300), yticklabelsize=5 #ticks=false
 	)
 	optimiser = Dict(x=>available_optimiser[x] for x in ui.active_optimiser)
 	for (idx, (name, opt)) in enumerate(optimiser)
@@ -501,22 +503,28 @@ begin
 			)
 		end
 	end
-	gradPlot
-end
-
-# ╔═╡ 9c17b8a7-1baa-451b-adb3-d4f82d531144
-begin
-	plot!(
-		gradPlot, 
-		1:ui.steps, shift ./ sqrt.(1:ui.steps), 
-		linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{\sqrt{n}}",
-		linecolor=:black
+	if loglog 
+		plot!(gradPlot, yaxis=:log, xaxis=:log, legend=:bottomleft)
+	end
+	if sqrtplot
+		plot!(
+			gradPlot, 
+			1:ui.steps, shift ./ sqrt.(1:ui.steps), 
+			linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{\sqrt{n}}",
+			linecolor=:black
+		)
+		# plot!(
+		# 	gradPlot, 
+		# 	1:ui.steps, shift ./ (1:ui.steps), 
+		# 	linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{n}"
+		# )
+	end
+	savefig(
+		"plots/$(ui.dim)dim_$(ui.steps)steps_s=$(ui.scale)_$(
+			join(String.(keys(optimiser)),"_")
+		).svg"
 	)
-	# plot!(
-	# 	gradPlot, 
-	# 	1:ui.steps, shift ./ (1:ui.steps), 
-	# 	linewidth=4, linestyle=:dot, label=L"\frac{%$(shift)}{n}"
-	# )
+	gradPlot
 end
 
 # ╔═╡ 1ad684c6-129c-449b-9eea-3a8c9dd0ac96
@@ -614,7 +622,7 @@ md"# Appendix"
 # ╟─63f0a57a-5b91-4518-bf3b-f5d21fcf3f0e
 # ╟─80c50c25-0af3-408e-9df1-2c5a99ecb059
 # ╟─8439b954-81b0-4e34-9e76-0cc4d290dd5b
-# ╟─a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
+# ╠═a8f77ffa-1c24-4bd9-ba43-86dd8bee4fe8
 # ╟─3e33bc57-b014-4618-ace5-1d14e9f313b1
 # ╟─702178e1-d0b6-4b0e-bf47-3a31acb34b77
 # ╟─d85c6f84-91a1-4b90-a19a-c981ed331d5c
@@ -637,10 +645,8 @@ md"# Appendix"
 # ╟─368cc59b-0650-49bd-92b8-a8ab8ff20df6
 # ╠═b86794ca-a3ca-4947-adf3-6be9289e7465
 # ╟─42fede2d-da64-4517-8db7-6fbb9a76741e
-# ╠═e39e11e5-2bcd-446c-9e66-b417eafdadef
-# ╠═80bc99b5-677e-4073-a617-a863a6a2c4ce
+# ╟─80bc99b5-677e-4073-a617-a863a6a2c4ce
 # ╟─62c798ac-79c1-4971-ab4a-ae0a50e6f9a3
-# ╟─9c17b8a7-1baa-451b-adb3-d4f82d531144
 # ╟─1ad684c6-129c-449b-9eea-3a8c9dd0ac96
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
