@@ -49,12 +49,11 @@ evaluate random function at point x
 function (grf::GaussianRandomFunction{T, N})(x::AbstractVector{T}) where {T<:Number, N}
 	coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
 
-	cond_expectation = reshape(reshape(grf.randomness, 1, :) * coeff, :)
+	cond_expectation, cond_var = conditionals(grf, x)
 	
-	cond_var = grf.cov(x,x) .- transpose(coeff)*coeff
-	cond_var[LinearAlgebra.diagind(cond_var)] .+= grf.jitter
-
+	cond_var[LinearAlgebra.diagind(cond_var)] .+= grf.jitter # numerical stability
 	cond_var_cholesky = LinearAlgebra.cholesky(cond_var, check=false)
+
 	if(!issuccess(cond_var_cholesky))
 		@warn "existing points determine new point (up to numeric errors) perfectly. Maybe your evaluations are too close to each other. This can build up to sharp kinks when moving far enough away until there is real stochasticity again.
 		Increase the distance of your evaluation points or increase jitter"
@@ -72,11 +71,29 @@ function (grf::GaussianRandomFunction{T, N})(x::AbstractVector{T}) where {T<:Num
 	return cond_expectation + cond_var_cholesky.L * new_randomness
 end
 
+@inline function conditionals(grf::GaussianRandomFunction{T,N}, x::AbstractVector) where {T,N}
+	"""
+	Calculates the conditional expectation and variance of the grf at point x
+	given the values of grf at previously evaluated points. Does not count as an
+	evaluation of grf yet. I.e.
+
+	return (
+		condExp= E[grf(x) | grf.( grf.evaluated_points)],
+		condVar= Var[grf(x) | grf.( grf.evaluated_points)]
+	) """
+	coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
+	return (
+		condExp= reshape(reshape(grf.randomness, 1, :) * coeff, :),
+		condVar= grf.cov(x,x) .- transpose(coeff)*coeff
+	)
+end
+
+function conditionals(grf::GaussianRandomFunction{T,N}) where {T,N}
+	return x::AbstractVector{T} -> conditionals(grf, x)
+end
+
 function conditionalExpectation(grf::GaussianRandomFunction{T,N}) where {T,N}
-	return x::AbstractVector{T} -> begin
-		coeff::Matrix{T} = solve!(grf.chol_cov, covariance(grf, x))
-		return reshape(reshape(grf.randomness, 1, :) * coeff, :)
-	end
+	return x::AbstractVector{T} -> conditionals(grf,x)[:condExp]
 end
 
 function (grf::GaussianRandomFunction{T, 1})(x::T) where T
