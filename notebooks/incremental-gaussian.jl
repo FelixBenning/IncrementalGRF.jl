@@ -153,24 +153,31 @@ plot(x, kernel.([[elt] for elt in x]), label="covariance kernel", fontfamily="Co
 # ╔═╡ 3e33bc57-b014-4618-ace5-1d14e9f313b1
 function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
 	val, grad = rf([0.])
-	cE = conditionalExpectation(rf)
+	cond = conditionals(rf)
 	
-	cE_evals = map(r->r.val, cE.([[elt] for elt in x]))
+	c_evals = cond.([[elt] for elt in x])
 	Z_evals = map(r->r.val, rf.([[elt] for elt in x]))
 	lims = (
-		min(minimum(Z_evals), minimum(cE_evals)), 
-		max(maximum(Z_evals), maximum(cE_evals))
+		min(minimum(Z_evals), minimum(
+			map(r -> r.val - 2 * sqrt(r.cov[1,1]), c_evals)
+		)), 
+		max(maximum(Z_evals), maximum(
+			map(r -> r.val + 2* sqrt(r.cov[1,1]), c_evals)
+		))
 	) .* 1.2
 	
 	pl = plot(legend=:topright, fontfamily="Computer Modern", ylim=lims)
 
-	plot!(pl, x, Z_evals, label=L"\mathcal{L}(x)")
-	plot!(pl, x, cE_evals, 
-		label=L"\mathbb{E}[\mathcal{L}(x)\mid \mathcal{L}(0),\nabla \mathcal{L}(0)]", linestyle=:dash)
+	
+	plot!(pl, x, map(v->v.val, c_evals), 
+		ribbon= map(v-> 2*sqrt(v.cov[1,1]), c_evals),
+		label=L"\mathbb{E}[\mathcal{L}(x)\mid \mathcal{L}(0),\nabla \mathcal{L}(0)]", linestyle=:dash, color=2, fa=0.1
+	)
+
 	plot!(pl, x, map(t-> val + t* first(grad), x), 
 		label=L"T[\mathcal{L}(x)\mid \mathcal{L}(0), \nabla\mathcal{L}(0)]",
-		linestyle=:dot)
-
+		linestyle=:dot, color=3)
+	plot!(pl, x, Z_evals, label=L"\mathcal{L}(x)", color=1)
 	plot!(pl, [0.], [val], seriestype=:scatter, color=1, label="", ms=1.5)
 	plot!(pl, size=(300,300))
 	return pl
