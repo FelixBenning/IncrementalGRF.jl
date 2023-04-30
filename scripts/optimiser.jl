@@ -1,6 +1,6 @@
 using Flux: Flux
 using LinearAlgebra: LinearAlgebra
-using IncrementalGRF
+using RandomFunctions
 
 abstract type Optimizer end
 

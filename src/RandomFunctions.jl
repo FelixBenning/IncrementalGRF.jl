@@ -1,4 +1,4 @@
-module IncrementalGRF
+module RandomFunctions
 
 export
 	PackedLowerTriangular,

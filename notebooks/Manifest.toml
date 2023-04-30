@@ -753,7 +753,7 @@ git-tree-sha1 = "3d09a9f60edf77f8a4d99f9e015e8fbf9989605d"
 uuid = "905a6f67-0a94-5f89-b386-d35d92009cd1"
 version = "3.1.7+0"
 
-[[deps.IncrementalGRF]]
+[[deps.RandomFunctions]]
 deps = ["Documenter", "ElasticArrays", "Flux", "LinearAlgebra", "Mongoc", "Plots", "ProgressLogging", "Random", "SpecialFunctions", "Zygote"]
 path = ".."
 uuid = "3642aa9e-ec3c-4cc7-84b8-4118a08652e8"

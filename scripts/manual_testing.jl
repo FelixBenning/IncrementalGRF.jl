@@ -1,4 +1,4 @@
-using IncrementalGRF
+using RandomFunctions
 using Plots: plot
 
 ##

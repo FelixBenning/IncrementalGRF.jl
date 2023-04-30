@@ -1,8 +1,8 @@
-# IncrementalGRF.jl
+# RandomFunctions.jl
 
 ```julia
 
-using IncrementalGRF
+using RandomFunctions
 
 rf = GaussianRandomFunction(Kernels.SquaredExponential{Float64, 2}(1))
 rf([0., 0.])

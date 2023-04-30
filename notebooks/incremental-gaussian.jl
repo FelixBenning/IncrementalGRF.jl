@@ -48,7 +48,7 @@ begin
 end
 
 # ╔═╡ 42170044-fed1-4e1c-8254-93e33b21a0b7
-using IncrementalGRF
+using RandomFunctions
 
 # ╔═╡ 9af5239a-7090-4f40-9ac4-96c9760a5d35
 begin
@@ -230,8 +230,8 @@ function connect(;
 	password=ENV["mongoDBpassword"]
 )
 	# https://github.com/felipenoris/Mongoc.jl/issues/69#issuecomment-946953526
-	# Need julia version 1.7: suffix = "tlsCAFile=$(pkgdir(IncrementalGRF, "scripts/cert.pem"))"
-	suffix = "tlsCAFile=$(joinpath(dirname(pathof(IncrementalGRF)), "..", "scripts/cert.pem"))"
+	# Need julia version 1.7: suffix = "tlsCAFile=$(pkgdir(RandomFunctions, "scripts/cert.pem"))"
+	suffix = "tlsCAFile=$(joinpath(dirname(pathof(RandomFunctions)), "..", "scripts/cert.pem"))"
 	cluster = "rf-simulations.lqksh0j.mongodb.net"
 	uri = "mongodb+srv://$user:$password@$cluster/?$(suffix)"
 	return Mongoc.Client(uri)

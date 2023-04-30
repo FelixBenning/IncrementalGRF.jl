@@ -1,5 +1,5 @@
 Pkg.activate(".")
-using IncrementalGRF, Pkg
+using RandomFunctions, Pkg
 Pkg.activate("test")
 
 include("../test/benchmark_suite.jl")

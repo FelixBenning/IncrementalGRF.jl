@@ -1,6 +1,6 @@
 using Documenter
 
-using IncrementalGRF
+using RandomFunctions
 
 
-makedocs(sitename="IncrementalGRF")
+makedocs(sitename="RandomFunctions")

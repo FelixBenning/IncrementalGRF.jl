@@ -3,7 +3,7 @@ using Mongoc: Mongoc
 
 using Dates: Dates
 using ProgressLogging: ProgressLogging as PL
-using IncrementalGRF
+using RandomFunctions
 
 function mongoOptimRF(opt; dim, scale, steps)
 	document = Mongoc.BSON()

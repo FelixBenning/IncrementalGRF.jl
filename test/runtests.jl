@@ -2,7 +2,7 @@ using Test
 using Plots: plot
 using LinearAlgebra: LinearAlgebra, triu!, tril!
 
-using IncrementalGRF 
+using RandomFunctions 
 
 include("benchmark_suite.jl")
 
