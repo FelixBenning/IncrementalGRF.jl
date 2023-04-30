@@ -77,7 +77,7 @@ function differentiabilitySlider()
 end
 
 # ╔═╡ 41f523c5-c3c9-4dc9-9185-4bf3c1285345
-function maternParamPicker(;sdv=0.01:0.01:10, scale=0.1:0.1:5, dim=1:300)
+function maternParamPicker(;sdv=0.05:0.05:10, scale=0.1:0.1:5, dim=1:300)
 	return PlutoUI.combine() do Child
 		@htl("""
 		<h3>Matern Random Function</h3>
@@ -171,15 +171,15 @@ function plotExpectationAgainstPlot(rf::DifferentiableGRF{1,Float64, 1})
 	
 	plot!(pl, x, map(v->v.val, c_evals), 
 		ribbon= map(v-> 2*sqrt(v.cov[1,1]), c_evals),
-		label=L"\mathbb{E}[\mathcal{L}(x)\mid \mathcal{L}(0),\nabla \mathcal{L}(0)]", linestyle=:dash, color=2, fa=0.1
+		label=L"\mathbb{E}[\mathcal{L}(x)\mid \mathcal{L}(0),\nabla \mathcal{L}(0)]", linestyle=:dash, color=3, fa=0.1
 	)
 
 	plot!(pl, x, map(t-> val + t* first(grad), x), 
 		label=L"T[\mathcal{L}(x)\mid \mathcal{L}(0), \nabla\mathcal{L}(0)]",
-		linestyle=:dot, color=3)
+		linestyle=:dot, color=2)
 	plot!(pl, x, Z_evals, label=L"\mathcal{L}(x)", color=1)
 	plot!(pl, [0.], [val], seriestype=:scatter, color=1, label="", ms=1.5)
-	plot!(pl, size=(300,300))
+	plot!(pl, size=(500,300))
 	return pl
 end
 
@@ -586,6 +586,9 @@ end
 # ╔═╡ 68e7f3bf-e06e-4440-af93-b7e6fe54379d
 plot!(orthPlot, size=(400,400))
 
+# ╔═╡ e40d44a9-9cd6-42c6-a452-cf5588993a52
+simulation
+
 # ╔═╡ 2bc50209-34d0-442c-91d3-9243749849a7
 savefig(orthPlot, "plots/projections.svg")
 
@@ -658,8 +661,9 @@ md"# Appendix"
 # ╟─edb84732-fbca-4248-b47e-4c5459df2674
 # ╟─e6114d6d-87f4-41cc-a6f8-c314a024a15f
 # ╟─c0df62ff-d312-45d6-a001-0ac9c1b4e34b
-# ╟─11a92e07-aa82-4f04-adda-d7227858061e
+# ╠═11a92e07-aa82-4f04-adda-d7227858061e
 # ╠═68e7f3bf-e06e-4440-af93-b7e6fe54379d
+# ╠═e40d44a9-9cd6-42c6-a452-cf5588993a52
 # ╠═2bc50209-34d0-442c-91d3-9243749849a7
 # ╟─8208bd08-8a5f-4c14-a6a2-f1e212a27c6f
 # ╟─d5a432d2-7b8e-42eb-8d2b-a4469e59dfcc
