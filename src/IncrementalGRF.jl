@@ -2,6 +2,7 @@ module IncrementalGRF
 
 export
 	PackedLowerTriangular,
+	BlockPackedLowerTri,
 	GaussianRandomFunction,
 	DifferentiableGRF,
 	Kernels,
@@ -17,6 +18,7 @@ abstract type IsotropicKernel{T<:Number,N} <: StationaryKernel{T,N} end
 
 include("blas.jl")
 include("packedLowerTriangular.jl")
+include("blockPackedLowerTriangular.jl")
 include("GRF.jl")
 include("differentiableGRF.jl")
 include("kernels.jl")

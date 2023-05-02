@@ -29,6 +29,45 @@ include("benchmark_suite.jl")
 	end
 end
 
+@testset "\\(::BlockPackedLowerTri{T,k}, ::AbstractMatrix{T}) where {T,k}" begin
+	@testset "Handwritten Basic" begin
+		A = [
+			1. 0. 0.
+			3. 4. 0.
+			5. 6. 9.
+		]
+		L = BlockPackedLowerTri(A, 2)
+		@test L == A
+		b = [
+			0.  1.
+			2.  3.
+			4.  5.
+		]	
+		x = L\b
+		@test L*x == b # consistency
+	end
+
+	@testset "Random Tests" begin
+		@testset "Constructor Works" begin
+			A = rand(5,5)
+			tril!(A)
+			@test A == BlockPackedLowerTri(A, 1)
+			@test A == BlockPackedLowerTri(A, 2)
+			@test A == BlockPackedLowerTri(A, 3)
+			@test A == BlockPackedLowerTri(A, 4)
+		end
+		@testset "Solve Linear Equation" begin
+			A = rand(20,20)
+			b = rand(20,4)
+			tril!(A)
+			L = BlockPackedLowerTri(A, 3)
+			x = L\b
+			@test L * x ≈ b # consistency
+			@test x ≈ A\b
+		end
+	end
+end
+
 @testset "Kernels" begin
 	@testset "SquaredExponential" begin
 		@test_throws ArgumentError Kernels.SquaredExponential{Float64, 1}(scale=-1.)
