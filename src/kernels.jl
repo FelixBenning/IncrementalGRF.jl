@@ -2,79 +2,89 @@ module Kernels
 
 using LinearAlgebra: LinearAlgebra
 using Zygote: Zygote, ForwardDiff
+using SpecialFunctions: besselk, gamma
 import ..StationaryKernel, ..IsotropicKernel, ..CovarianceKernel
 
-@inline function (k::StationaryKernel{T,N})(
+"""
+    function (k::StationaryKernel{T,Dim})(x::AbstractVector{T}, y::AbstractVector{T})
+
+    Calculate `k(x,y)` where `k` is a stationary covariance kernel.
+"""
+@inline function (k::StationaryKernel{T,Dim})(
     x::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}},
     y::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}}
-) where {T,N,n}
-    @boundscheck length(x) == N || throw(ArgumentError(
-        "The first input is of size $(length(x)), but should be of size $N"))
-    @boundscheck length(y) == N || throw(ArgumentError(
-        "The second input is of size $(length(y)), but should be of size $N"))
+) where {T,Dim,n}
+    @boundscheck length(x) == Dim || throw(ArgumentError(
+        "The first input is of size $(length(x)), but should be of size $Dim"))
+    @boundscheck length(y) == Dim || throw(ArgumentError(
+        "The second input is of size $(length(y)), but should be of size $Dim"))
     return @inbounds k(x - y)
 end
 
-@inline function (k::IsotropicKernel{T,N})(
+@inline function (k::IsotropicKernel{T,Dim})(
     d::Union{AbstractVector{T},Vector{ForwardDiff.Dual{Nothing,T,n}}}
-) where {T,N,n}
-    @boundscheck length(d) == N || throw(ArgumentError(
-        "The input is of size $(length(d)), but should be of size $N"))
+) where {T,Dim,n}
+    @boundscheck length(d) == Dim || throw(ArgumentError(
+        "The input is of size $(length(d)), but should be of size $Dim"))
     return sqNormEval(k, LinearAlgebra.dot(d, d))
 end
 
-struct TaylorCovariance{Order,T,N,K<:CovarianceKernel{T,N}} <: CovarianceKernel{T,N}
+struct TaylorCovariance{Order,T,Dim,K<:CovarianceKernel{T,Dim}} <: CovarianceKernel{T,Dim}
     k::K
 end
 
-function TaylorCovariance{Order}(k::K) where {Order,T,N,K<:CovarianceKernel{T,N}}
-    return TaylorCovariance{Order,T,N,K}(k)
+function TaylorCovariance{Order}(k::K) where {Order,T,Dim,K<:CovarianceKernel{T,Dim}}
+    return TaylorCovariance{Order,T,Dim,K}(k)
 end
 
-@inline function (cov::TaylorCovariance{1,T,N,K})(x::AbstractVector{T}, y::AbstractVector{T}) where {T,N,K<:CovarianceKernel{T,N}}
-    @boundscheck length(x) == N || throw(ArgumentError(
-        "The first input is of size $(length(x)), but should be of size $N"))
-    @boundscheck length(y) == N || throw(ArgumentError(
-        "The second input is of size $(length(y)), but should be of size $N"))
+@inline function (cov::TaylorCovariance{1,T,Dim,K})(
+    x::AbstractVector{T}, y::AbstractVector{T}
+) where {T,Dim,K<:CovarianceKernel{T,Dim}}
+    @boundscheck length(x) == Dim || throw(ArgumentError(
+        "The first input is of size $(length(x)), but should be of size $Dim"))
+    @boundscheck length(y) == Dim || throw(ArgumentError(
+        "The second input is of size $(length(y)), but should be of size $Dim"))
     return _taylor1(cov.k, x, y)
 end
 
-@inline function (cov::TaylorCovariance{1,T,N,K})(x::AbstractVector{T}, y::AbstractVector{T}) where {T,N,K<:StationaryKernel{T,N}}
-    @boundscheck length(x) == N || throw(ArgumentError(
-        "The first input is of size $(length(x)), but should be of size $N"))
-    @boundscheck length(y) == N || throw(ArgumentError(
-        "The second input is of size $(length(y)), but should be of size $N"))
+@inline function (cov::TaylorCovariance{1,T,Dim,K})(
+    x::AbstractVector{T}, y::AbstractVector{T}
+) where {T,Dim,K<:StationaryKernel{T,Dim}}
+    @boundscheck length(x) == Dim || throw(ArgumentError(
+        "The first input is of size $(length(x)), but should be of size $Dim"))
+    @boundscheck length(y) == Dim || throw(ArgumentError(
+        "The second input is of size $(length(y)), but should be of size $Dim"))
 
     return _taylor1(cov.k, x - y)
 end
-@inline function (cov::TaylorCovariance{1,T,N,K})(d::AbstractVector{T}) where {T,N,K<:StationaryKernel{T,N}}
-    @boundscheck length(d) == N || throw(ArgumentError(
-        "The input is of size $(length(d)), but should be of size $N"))
+@inline function (cov::TaylorCovariance{1,T,Dim,K})(d::AbstractVector{T}) where {T,Dim,K<:StationaryKernel{T,Dim}}
+    @boundscheck length(d) == Dim || throw(ArgumentError(
+        "The input is of size $(length(d)), but should be of size $Dim"))
 
     return _taylor1(cov.k, d)
 end
 
 """
-	Auto-diff Fallback for the TaylorCovariance{1,T,N,CovarianceKernel{T,N}}
+	Auto-diff Fallback for the TaylorCovariance{1,T,Dim,CovarianceKernel{T,Dim}}
 """
-@inline function _taylor1(kernel::CovarianceKernel{T,N}, x::AbstractVector{T}, y::AbstractVector{T}) where {T,N}
-    result = Matrix{T}(undef, N + 1, N + 1)
+@inline function _taylor1(kernel::CovarianceKernel{T,Dim}, x::AbstractVector{T}, y::AbstractVector{T}) where {T,Dim}
+    result = Matrix{T}(undef, Dim + 1, Dim + 1)
     val, grad = @inbounds Zygote.withgradient(kernel, x, y)
     result[1, 1] = val
     result[2:end, 1] = grad[1]
     result[1, 2:end] = grad[2]
     
     # not efficient at all:
-    full_hess = @inbounds Zygote.hessian(v->kernel(v[1:N],v[N+1:end]), vcat(x,y))
-    result[2:end, 2:end] = full_hess[N+1:end, 1:N] # throw away 3/4 of the matrix
+    full_hess = @inbounds Zygote.hessian(v->kernel(v[1:Dim],v[Dim+1:end]), vcat(x,y))
+    result[2:end, 2:end] = full_hess[Dim+1:end, 1:Dim] # throw away 3/4 of the matrix
     return result
 end
 
 """
-	Auto-diff Fallback for the TaylorCovariance{1,T,N,StationaryKernel{T,N}}
+	Auto-diff Fallback for the TaylorCovariance{1,T,Dim,StationaryKernel{T,Dim}}
 """
-@inline function _taylor1(kernel::StationaryKernel{T,N}, d::AbstractVector{T}) where {T,N}
-    result = Matrix{T}(undef, N + 1, N + 1)
+@inline function _taylor1(kernel::StationaryKernel{T,Dim}, d::AbstractVector{T}) where {T,Dim}
+    result = Matrix{T}(undef, Dim + 1, Dim + 1)
     val, grad = @inbounds Zygote.withgradient(kernel, d)
     grad = first(grad) # only one input
     result[1, 1] = val
@@ -86,10 +96,10 @@ end
 
 
 """
-	Auto-diff Fallback for TaylorCovariance{1,T,N,IsotropicKernel{T,N}}
+	Auto-diff Fallback for TaylorCovariance{1,T,Dim,IsotropicKernel{T,Dim}}
 """
-@inline function _taylor1(kernel::IsotropicKernel{T,N}, d::AbstractVector{T}) where {T,N}
-    result = Matrix{T}(undef, N + 1, N + 1)
+@inline function _taylor1(kernel::IsotropicKernel{T,Dim}, d::AbstractVector{T}) where {T,Dim}
+    result = Matrix{T}(undef, Dim + 1, Dim + 1)
     val, grad_1dim = Zygote.withgradient(x -> sqNormEval(kernel, x), LinearAlgebra.dot(d, d))
 
     result[1, 1] = val
@@ -105,36 +115,142 @@ end
     return result
 end
 
-struct SquaredExponential{T<:Number,N} <: IsotropicKernel{T,N}
-    lengthScale::T
-    SquaredExponential{T,N}(lengthScale) where {T<:Number,N} = begin
-        lengthScale > 0 ? new(lengthScale) : throw(
-            ArgumentError("lengthScale is not positive")
+struct SquaredExponential{T<:Number,Dim} <: IsotropicKernel{T,Dim}
+    scale::T
+    variance::T
+    @doc raw"""
+
+        SquaredExponential{T,Dim} <: IsotropicKernel{T,Dim}
+        
+        SquaredExponential{T,Dim}(
+            ;scale::T=one(T),
+            variance::T=one(T),
+            scale_var_by_dim::Bool=true
         )
+    
+    Construct the Squared Exponential Kernel
+    ```math
+        C(h) = \sigma^2\exp\Bigl(-\frac{h^2}{2s^2}\Bigr)
+    ```
+    where
+    - s = scale
+    - ``\sigma^2`` = (variance / Dim)   if `scale_var_by_dim` is true
+    - ``\sigma^2`` = variance         if `scale_var_by_dim` is false
+    """
+    SquaredExponential{T,Dim}(
+        ;scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
+    ) where {T<:Number, Dim} = begin
+        scale > 0 || throw(ArgumentError("scale is not positive"))
+        variance > 0 || throw(ArgumentError("variance is not positive"))
+        return new(scale, scale_var_by_dim ? variance/Dim : variance)
+    end
+end
+
+struct Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
+    nu::Real
+    scale::T
+    variance::T
+    @doc raw"""
+
+        Matern{T<:Number, Dim} <: IsotropicKernel{T,Dim}
+
+        Matern{T, Dim}(
+            ;nu::Real,
+            scale::T=one(T),
+            variance::T=one(T),
+            scale_var_by_dim::Bool=true
+        )
+
+    Construct the Matérn covariance Kernel
+    ```math
+        C_\nu(h) = \sigma^2 \frac{2^{1-\nu}}{\Gamma(\nu)}
+        \Bigl(\frac{\sqrt{2\nu}}{s} h \Bigr)^\nu
+        K_\nu\Bigl(\frac{\sqrt{2\nu}}{s}h\Bigr)
+    ```
+    where
+    - ``\nu`` = nu
+    - s = scale
+    - ``\sigma^2`` = (variance / Dim)   if `scale_var_by_dim` is true
+    - ``\sigma^2`` = variance         if `scale_var_by_dim` is false
+    """
+    Matern{T, Dim}(
+        ; nu::Real, scale::T=one(T), variance::T=one(T), scale_var_by_dim::Bool=true
+    ) where {T<:Number, Dim} = begin
+        scale > 0 || throw(ArgumentError("scale is not positive"))
+        nu > 0 || throw(ArgumentError("nu is not positive"))
+        variance > 0 || throw(ArgumentError("variance is not positive"))
+        return new(nu, scale, scale_var_by_dim ? variance/sqrt(Dim) : variance)
+    end
+end
+
+
+"""
+    Calculates ``arg^ν K_ν(arg)``, where K_ν is the modified bessel function.
+"""
+@inline function xbesselk(nu, arg)
+    if arg > 0
+        return arg^nu * besselk(nu, arg)
+    else
+        return gamma(nu)/2^(1-nu)
+    end
+    throw(ArgumentError("only positive arg expected"))
+end
+
+@inline function sqNormEval(
+    k::Matern{T, Dim},
+    sqNorm::Union{T,ForwardDiff.Dual}
+) where {T,Dim}
+    if sqNorm > 0 
+        arg = sqrt(2*k.nu * sqNorm)/k.scale
+        return k.variance * 2^(1-k.nu)/gamma(k.nu) * xbesselk(k.nu, arg)
+    else
+        return k.variance
     end
 end
 
 @inline function sqNormEval(
-    k::SquaredExponential{T,N},
-    d::Union{T,ForwardDiff.Dual}
-) where {T,N,n}
-    return exp(-d / (2 * k.lengthScale^2))
+    k::SquaredExponential{T,Dim},
+    sqNorm::Union{T,ForwardDiff.Dual}
+) where {T,Dim}
+    return k.variance * exp(-sqNorm / (2 * k.scale^2))
 end
 
-
-@inline function _taylor1(kernel::SquaredExponential{T,N}, d::AbstractVector{T}) where {T,N}
+@inline function _taylor1(kernel::SquaredExponential{T,Dim}, d::AbstractVector{T}) where {T,Dim}
     dim = length(d)
     result = Matrix{T}(undef, dim + 1, dim + 1)
     factor = sqNormEval(kernel, LinearAlgebra.dot(d, d))
     result[1, 1] = factor
-    dl = d / (kernel.lengthScale^2)
+    dl = d / (kernel.scale^2)
     grad = factor * dl
     result[2:end, 1] = -grad
     result[1, 2:end] = grad
     result[2:end, 2:end] = (
-        factor * LinearAlgebra.I / kernel.lengthScale^2 - grad * transpose(dl)
+        factor * LinearAlgebra.I / kernel.scale^2 - grad * transpose(dl)
     )
     return result
 end
+
+@inline function _taylor1(kernel::Matern{T,Dim}, d::AbstractVector{T}) where {T,Dim}
+    result = Matrix{T}(undef, Dim + 1, Dim + 1)
+    h = LinearAlgebra.norm(d) / kernel.scale
+
+    arg = sqrt(2*kernel.nu) * h
+
+    factor = kernel.variance * 2^(1-kernel.nu)/gamma(kernel.nu)
+
+    result[1,1] = factor * xbesselk(kernel.nu, arg) 
+    rat = 2 * kernel.nu / kernel.scale^2
+    fd = - rat * factor * xbesselk(kernel.nu - 1, arg)
+    grad = fd * d
+    result[2:end, 1] = grad
+    result[1, 2:end] = -grad
+
+    dfd = rat * rat * factor * xbesselk(kernel.nu -2, arg)
+    hess = (-fd) * LinearAlgebra.I + (-dfd) * d * d'
+    result[2:end, 2:end] = hess
+
+    return result
+end
+
 
 end # module

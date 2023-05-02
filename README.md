@@ -4,14 +4,14 @@
 
 using IncrementalGRF
 
-rf = GaussianRandomField(Kernels.SquaredExponential{Float64, 2}(1))
+rf = GaussianRandomFunction(Kernels.SquaredExponential{Float64, 2}(1))
 rf([0., 0.])
 rf.([
   [1., 0.]
   [0., 1.]
 ])
 
-# Gradient Descent on Random Field
+# Gradient Descent on Random Function
 dim=10
 diff_rf = DifferentiableGRF(Kernels.SquaredExponential{Float64, dim}(1))
 

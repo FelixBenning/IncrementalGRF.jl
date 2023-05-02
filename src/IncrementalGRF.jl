@@ -3,13 +3,14 @@ module IncrementalGRF
 export
 	PackedLowerTriangular,
 	BlockPackedLowerTri,
-	GaussianRandomField,
+	GaussianRandomFunction,
 	DifferentiableGRF,
 	Kernels,
 	CovarianceKernel,
 	StationaryKernel,
 	IsotropicKernel,
-	conditionalExpectation
+	conditionalExpectation,
+	conditionals
 
 abstract type CovarianceKernel{T<:Number,N} end
 abstract type StationaryKernel{T<:Number,N} <: CovarianceKernel{T,N} end
