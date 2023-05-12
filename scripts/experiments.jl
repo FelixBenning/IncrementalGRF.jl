@@ -22,7 +22,7 @@ function evaluate_(k::Kernel, x::Pt{Dim}, y::Pt{Dim}) where {Dim}
 			evaluate_( # recursion
 				k,  
 				Pt(
-					x.pos + dx * OneHotVector(ii, Dim), # directional variation
+					x.pos .+ dx * OneHotVector(ii, Dim), # directional variation
 					partial=Base.rest(x.partial, state) # remaining partial derivatives
 				),
 				y
@@ -36,8 +36,8 @@ function evaluate_(k::Kernel, x::Pt{Dim}, y::Pt{Dim}) where {Dim}
 				k,
 				x,
 				Pt(
-					y.pos + dy * OneHotVector(jj, Dim), # directional variation
-					partial=Base.rest(x.partial, state) # remaining partial derivatives
+					y.pos .+ dy * OneHotVector(jj, Dim), # directional variation
+					partial=Base.rest(y.partial, state) # remaining partial derivatives
 				)
 			)
 		end
@@ -47,7 +47,11 @@ end
 
 k = KF.MaternKernel()
 
-k([1],[2])
-k(Pt([1], partial=(1,)), [2]) # ∂ₓk(x,y)
+k([1],[1])
+k([1], Pt([1], partial=(1,1)))
+k(Pt([1], partial=1), [2]) # ∂ₓk(x,y)
+k(Pt([1], partial=(1)), Pt([2], partial=1))# ∂ₓk(x,y)
 
 k(Pt(1, partial=(1,)), 2)
+
+k = KF.SEKernel()
