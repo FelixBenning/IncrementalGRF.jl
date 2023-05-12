@@ -9,7 +9,7 @@ end
 
 Pt(x;partial=()) = Pt{length(x)}(x, partial)
 
-for T in [Kernel, KF.SimpleKernel]
+for T in subtypes(Kernel)
 	(k::T)(x::Pt{Dim}, y::Pt{Dim}) where {Dim} = evaluate_(k, x, y)
 	(k::T)(x::Pt{Dim}, y) where {Dim} = evaluate_(k, x, Pt(y))
 	(k::T)(x, y::Pt{Dim}) where {Dim} = evaluate_(k, Pt(x), y)
@@ -50,3 +50,4 @@ k = KF.MaternKernel()
 k([1],[2])
 k(Pt([1], partial=(1,)), [2]) # ∂ₓk(x,y)
 
+k(Pt(1, partial=(1,)), 2)
