@@ -9,8 +9,11 @@ end
 
 Pt(x;partial=()) = Pt{length(x)}(x, partial)
 
-(k::KF.SimpleKernel)(x::Pt{Dim}, y::Pt{Dim}) where {Dim} = evaluate_(k, x, y)
-(k::Kernel)(x::Pt{Dim}, y::Pt{Dim}) where {Dim} = evaluate_(k, x, y)
+for T in [Kernel, KF.SimpleKernel]
+	(k::T)(x::Pt{Dim}, y::Pt{Dim}) where {Dim} = evaluate_(k, x, y)
+	(k::T)(x::Pt{Dim}, y) where {Dim} = evaluate_(k, x, Pt(y))
+	(k::T)(x, y::Pt{Dim}) where {Dim} = evaluate_(k, Pt(x), y)
+end
 
 function evaluate_(k::Kernel, x::Pt{Dim}, y::Pt{Dim}) where {Dim}
 	if !isnothing(local next = iterate(x.partial))
@@ -44,7 +47,6 @@ end
 
 k = KF.MaternKernel()
 
-k(Pt([1]), Pt([2])) # k(x,y)  with x=1, y=2
-k(Pt([1], partial=(1,)), Pt([2])) # ∂ₓk(x,y)
-k(1,2)
+k([1],[2])
+k(Pt([1], partial=(1,)), [2]) # ∂ₓk(x,y)
 
