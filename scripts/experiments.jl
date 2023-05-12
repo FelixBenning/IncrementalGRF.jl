@@ -1,6 +1,6 @@
 using KernelFunctions
 using OneHotArrays: OneHotVector
-using ForwardDiff: derivative
+import ForwardDiff as FD
 
 struct Pt{Dim}
 	pos::AbstractArray
@@ -14,20 +14,31 @@ struct TaylorKernel <: KernelFunctions.Kernel
 end
 
 function (tk::TaylorKernel)(x::Pt{Dim}, y::Pt{Dim}) where Dim
-	k = tk.k
-	for ii in x.partial
-		k = (x₁,x₂) -> derivative(0) do Δx
-			x₁[ii] += Δx
-			return k(x₁,x₂)
+	if !isnothing(local next = iterate(x.partial))
+		ii, state = next # take partial derivative in direction ii
+		return FD.derivative(0) do dx
+			tk( # recursion
+				Pt(
+					x.pos + dx * OneHotVector(ii, Dim), # directional variation
+					partial=Base.rest(x.partial, state) # remaining partial derivatives
+				),
+				y
+			)
 		end
 	end
-	for jj in y.partial
-		k = (x₁,x₂) -> derivative(0) do Δx
-			x₂[jj] += Δx
-			return k(x₁,x₂)
+	if !isnothing(local next = iterate(y.partial))
+		jj, state = next # take partial derivative in direction jj
+		return FD.derivative(0) do dy
+			tk( # recursion
+				x,
+				Pt(
+					y.pos + dy * OneHotVector(jj, Dim), # directional variation
+					partial=Base.rest(x.partial, state) # remaining partial derivatives
+				)
+			)
 		end
 	end
-	k(x.pos, y.pos)
+	tk.k(x.pos, y.pos)
 end
 
 k = TaylorKernel(MaternKernel())
